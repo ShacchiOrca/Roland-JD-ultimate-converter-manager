@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roland JD-08 Total Patch Commander & Librarian Ultimate</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<style>
+:root {
+  --bg: #0e1013;
+  --pan: #17191e;
+  --card: #20242b;
+  --lcd: #0f1c14;
+  --glow: #39ff5a;
+  --org: #ff5500;
+  --org-hover: #ff772b;
+  --amb: #ffaa00;
+  --blu: #00a8ff;
+  --red: #ff3b3b;
+  --txt: #e4e6eb;
+  --mut: #8b929e;
+  --brd: #2c303a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+body {
+  background: var(--bg); color: var(--txt);
+  font-family: 'Segoe UI', Roboto, Consolas, monospace;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+header {
+  background: linear-gradient(180deg, #23262d, #14161a);
+  border-bottom: 2px solid var(--org);
+  padding: 6px 12px; display: flex; align-items: center;
+  justify-content: space-between; gap: 8px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-size: 0.98rem; letter-spacing: 1.2px; color: #fff; font-weight: 800; }
+.brand span { color: var(--org); font-size: 0.72rem; font-family: Consolas, monospace; }
+.status-pill {
+  background: #101216; border: 1px solid var(--brd); color: var(--glow);
+  padding: 3px 8px; border-radius: 4px; font-family: Consolas, monospace; font-size: 0.7rem;
+}
+.row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 0.72rem; }
+.mode-sw { display: flex; background: #111; border: 1px solid var(--brd); border-radius: 4px; overflow: hidden; }
+.mode-btn {
+  padding: 4px 8px; border: none; background: transparent;
+  color: var(--mut); font-size: 0.7rem; font-weight: 600; cursor: pointer;
+}
+.mode-btn.active { background: var(--org); color: #fff; }
+.chk {
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+  background: #16181d; padding: 4px 8px; border: 1px solid var(--brd); border-radius: 4px;
+}
+button, .fbtn, select.flt-sel {
+  background: var(--card); color: var(--txt); border: 1px solid var(--brd);
+  padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.71rem;
+  font-weight: 600; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  font-family: inherit; transition: 0.12s;
+}
+button:hover:not(:disabled), .fbtn:hover, select.flt-sel:hover { border-color: var(--org); color: #fff; }
+button.pri, .fbtn.pri { background: var(--org); border-color: var(--org); color: #000; font-weight: 700; }
+button.pri:hover:not(:disabled), .fbtn.pri:hover { background: var(--org-hover); color: #000; }
+button.dng:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+button:disabled { opacity: 0.35; cursor: not-allowed; }
+input[type="file"] { display: none; }
+
+.work { display: grid; grid-template-columns: 1fr 98px 1fr; flex: 1; overflow: hidden; border-bottom: 1px solid var(--brd); }
+.pane { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.pane.act { box-shadow: inset 0 0 0 1px rgba(255, 85, 0, 0.55); }
+.p-hdr {
+  background: var(--pan); padding: 5px 9px; border-bottom: 1px solid var(--brd);
+  display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.p-tit { font-family: Consolas, monospace; font-size: 0.75rem; font-weight: 700; color: var(--amb); display: flex; align-items: center; gap: 6px; }
+.bdg { background: #2b2f3a; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 0.65rem; }
+.bdg.shd { background: #143546; color: var(--blu); border: 1px solid var(--blu); }
+.sbox {
+  background: #0b0c0e; border: 1px solid var(--brd); color: var(--glow);
+  padding: 3px 7px; border-radius: 4px; font-family: Consolas, monospace; font-size: 0.71rem; width: 110px;
+}
+.b-bar {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  background: #131519; border-bottom: 1px solid var(--brd); padding: 4px 7px 0; gap: 5px; flex-wrap: wrap;
+}
+.tabs { display: flex; gap: 3px; overflow-x: auto; }
+.tab {
+  padding: 4px 8px; background: #1b1d23; border: 1px solid var(--brd);
+  border-bottom: none; border-radius: 4px 4px 0 0; cursor: pointer;
+  font-weight: 700; color: var(--mut); font-size: 0.68rem;
+}
+.tab.active { background: var(--bg); color: var(--org); border-top: 2px solid var(--org); }
+.tab.sc-tab.active { color: var(--blu); border-top-color: var(--blu); }
+.tab.drag-t { background: #1c3623 !important; color: var(--glow) !important; }
+
+.g-wrap { flex: 1; overflow-y: auto; padding: 6px; }
+/* GRID VIEW */
+.grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.cell {
+  background: var(--pan); border: 1px solid var(--brd); border-radius: 4px;
+  padding: 4px 5px; cursor: grab; display: flex; flex-direction: column;
+  justify-content: space-between; min-height: 58px; position: relative;
+}
+.cell:hover { border-color: #555b69; background: var(--card); }
+.cell.emp { opacity: 0.42; border-style: dotted; }
+.cell.sel { border-color: var(--org); background: #2c201b; opacity: 1; }
+.cell.pri-sel { border-color: #ff8800; box-shadow: 0 0 0 1px #ff8800; }
+.cell.sc.sel { border-color: var(--blu); background: #172734; }
+.cell.d-over { border: 1px dashed var(--glow) !important; background: #182b1d !important; }
+.cell.mod .cid::after { content: "*"; color: var(--org); font-weight: 900; margin-left: 2px; }
+
+/* LIST VIEW (Commander Style) */
+.list-tbl { display: flex; flex-direction: column; border: 1px solid var(--brd); border-radius: 4px; overflow: hidden; }
+.list-hdr, .list-row {
+  display: grid; grid-template-columns: 64px 1fr 70px 75px 75px;
+  padding: 4px 8px; font-family: Consolas, monospace; font-size: 0.73rem; align-items: center;
+}
+.list-hdr { background: #181a1f; color: var(--mut); font-size: 0.66rem; font-weight: 700; border-bottom: 1px solid var(--brd); }
+.list-row { border-bottom: 1px solid #22262e; cursor: grab; background: #1c2026; }
+.list-row:nth-child(even) { background: #171a20; }
+.list-row:hover { background: #282d37; }
+.list-row.emp { opacity: 0.48; }
+.list-row.sel { background: #32241e; color: #fff; border-left: 3px solid var(--org); }
+.list-row.pri-sel { outline: 1px solid var(--amb); }
+.list-row.d-over { border-top: 2px solid var(--glow); background: #182b1d !important; }
+
+.s-ord {
+  position: absolute; top: -5px; right: -5px; background: var(--org); color: #000;
+  font-size: 0.56rem; font-family: monospace; font-weight: 800; padding: 1px 4px;
+  border-radius: 8px; pointer-events: none;
+}
+.cid { font-size: 0.62rem; font-family: monospace; color: var(--amb); display: flex; justify-content: space-between; align-items: center; }
+.sc .cid { color: var(--blu); }
+.dots { display: flex; gap: 2px; }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: #333; }
+.dot.on { background: var(--glow); box-shadow: 0 0 3px var(--glow); }
+.cname { font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: 700; color: #fff; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.cmeta { display: flex; justify-content: space-between; font-size: 0.56rem; font-family: monospace; color: var(--mut); align-items: center; }
+.ctag { padding: 0 3px; border-radius: 2px; background: #14161a; font-weight: 700; }
+.ctag.BASS { color: #ff7676; } .ctag.PAD { color: #76d4ff; } .ctag.LEAD { color: #ffd476; }
+.ctag.KEYS { color: #a8ff76; } .ctag.BELL { color: #e29eff; } .ctag.SYNTH { color: #ffb86c; } .ctag.INIT { color: #666; }
+
+.bridge {
+  background: #131519; border-left: 1px solid var(--brd); border-right: 1px solid var(--brd);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5px; gap: 4px;
+}
+.b-lbl { font-size: 0.58rem; font-family: monospace; color: var(--mut); text-transform: uppercase; text-align: center; }
+.bbtn { width: 100%; justify-content: center; padding: 4px 2px; font-size: 0.65rem; flex-direction: column; gap: 1px; }
+.bbtn small { font-size: 0.53rem; color: var(--mut); }
+
+footer {
+  height: 188px; background: var(--pan);
+  display: grid; grid-template-columns: 285px 1fr 330px; gap: 9px; padding: 8px 12px; flex-shrink: 0;
+}
+.lcd {
+  background: var(--lcd); border: 3px solid #2b3036; border-radius: 6px;
+  padding: 7px 9px; font-family: 'Courier New', monospace; color: var(--glow);
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.lcd-in {
+  background: rgba(0, 0, 0, 0.45); border: 1px solid #285a32; color: var(--glow);
+  font-family: 'Courier New', monospace; font-size: 1.08rem; font-weight: 700; padding: 3px 5px; width: 100%;
+}
+.insp-m, .insp-r { background: var(--bg); border: 1px solid var(--brd); border-radius: 6px; padding: 6px 8px; overflow-y: auto; }
+.t-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; height: 100%; }
+.t-card {
+  background: var(--pan); border: 1px solid var(--brd); border-radius: 4px;
+  padding: 5px; font-size: 0.64rem; opacity: 0.35; display: flex; flex-direction: column; justify-content: space-between;
+}
+.t-card.act { opacity: 1; border-top: 2px solid var(--glow); }
+.w-bdg, .sc-sel {
+  background: #111; color: var(--glow); padding: 2px 4px; border-radius: 3px;
+  font-family: monospace; font-size: 0.63rem; border: 1px solid var(--brd);
+  width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.p-row { display: flex; justify-content: space-between; color: var(--mut); font-size: 0.61rem; }
+.p-val { color: var(--txt); font-family: monospace; }
+.s-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; font-family: monospace; font-size: 0.61rem; color: var(--mut); }
+.s-grid b { color: var(--amb); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>ROLAND JD-08 COMMANDER & LIBRARIAN</h1>
+    <span>// SVD / BIN / SDZ / SYX Total Converter & Scene Manager</span>
+  </div>
+  <div class="row">
+    <span class="status-pill" id="globalStatus">Ready — Blank 256-Slot SVD5 Template Active</span>
+    <button id="undoBtn" disabled onclick="undo()" title="Undo (Ctrl+Z)">↩ Undo (0)</button>
+    <button id="redoBtn" disabled onclick="redo()" title="Redo (Ctrl+Y)">↪ Redo (0)</button>
+    <div class="mode-sw" title="Drag & Drop Behavior">
+      <button class="mode-btn active" id="modeSwapBtn" onclick="setDragMode('swap')">⇄ Swap</button>
+      <button class="mode-btn" id="modeCopyBtn" onclick="setDragMode('copy')">➔ Copy</button>
+    </div>
+    <div class="mode-sw" title="Switch Grid or Table List View">
+      <button class="mode-btn active" id="viewGridBtn" onclick="setViewMode('grid')">▦ Grid</button>
+      <button class="mode-btn" id="viewListBtn" onclick="setViewMode('list')">☰ List</button>
+    </div>
+    <label class="chk" title="Automatically update Scene Part A/B patch links when moving/sorting patches">
+      <input type="checkbox" id="autoRelinkCheckbox" checked> 🔗 Auto-Relink Scenes
+    </label>
+  </div>
+</header>
+
+<div class="work" id="workspace"></div>
+
+<footer>
+  <div class="lcd">
+    <div class="row" style="justify-content:space-between;font-size:.68rem">
+      <span id="lcdPaneInfo">PANE: [L]</span>
+      <span id="lcdSlotInfo">SLOT: A11</span>
+    </div>
+    <input type="text" id="lcdNameInput" class="lcd-in" maxlength="16" value="INIT PATCH">
+    <div class="row" style="justify-content:space-between;font-size:.65rem;color:#8aff9d">
+      <span id="lcdExtraLeft">CAT: INIT</span>
+      <span id="lcdExtraRight">LEVEL: 80</span>
+    </div>
+  </div>
+  <div class="insp-m"><div class="t-grid" id="tonesContainer"></div></div>
+  <div class="insp-r" style="display:flex;flex-direction:column;justify-content:space-between">
+    <div>
+      <div class="row" style="justify-content:space-between;color:var(--amb);font-weight:700;margin-bottom:3px">
+        <span>SCENE LINKS & CLIPBOARD</span>
+        <span id="clipStatus" style="color:var(--glow)">Clipboard: empty</span>
+      </div>
+      <div id="envDetails" style="font-family:monospace;color:var(--blu);font-size:.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+        Ready. Load .SVD, .BIN, .SDZ, or .SYX into either pane.
+      </div>
+    </div>
+    <div class="s-grid">
+      <div><b>Arrows / Click</b>: Select</div><div><b>Shift/Ctrl+Click</b>: Multi</div>
+      <div><b>Del / F8</b>: Init Slot(s)</div><div><b>Ctrl+C / X / V</b>: Clipboard</div>
+      <div><b>F5 / F6</b>: Copy / Swap</div><div><b>F2 / DblClick</b>: Rename</div>
+      <div><b>Ctrl+Z / Y</b>: Undo/Redo</div><div><b>Drop on Tab</b>: Move Bank</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ============================================================================
+// 1. CONSTANTS, WAVEFORMS & BINARY HEADERS
+// ============================================================================
+const PATCH_SIZE_JD08 = 2048;
+const SCENE_SIZE_JD08 = 11524;
+const JD08_PATCH_HEADER = new Uint8Array([0x00,0x00,0x00,0x00, 0x01,0x01,0x05,0x00, 0x0F,0x00,0x00,0x00, 0x00,0x00,0x00,0x00]);
+
+const WAVES = "Syn Saw 1|Syn Saw 2|FAT Saw|FAT Square|Syn Pulse1|Syn Pulse2|Syn Pulse3|Syn Pulse4|Syn Pulse5|Pulse Mod|Triangle|Sine|Soft Saw|Synced Saw|HPF Saw|Digital 1|Digital 2|Digital 3|Digital 4|Digital 5|Digital 6|Digital 7|Glass Wave|Bell Wave|Organ 1|Organ 2|E.Organ 1|E.Organ 2|Vocal 1|Vocal 2|Choir|Voice Pad|Piano|E.Piano 1|E.Piano 2|Clav|Harpsichord|Celesta|Marimba|Vibe|Xylophone|Steel Drum|Kalimba|Gamelan 1|Gamelan 2|Bell 1|Bell 2|Chime|Fingered B|Picked Bass|Fretless|Slap Bass|Synth Bass|Acoustic G|Nylong Gt|E.Guitar 1|E.Guitar 2|Dist Gt|Muted Gt|Gt Harm|Sitar|Pluck 1|Pluck 2|Harp|Strings|Pizzicato|Trumpet|Trombone|French Hrn|Brass|Alto Sax|Tenor Sax|Baritone S|Flute|Pan Flute|Shakuhachi|Blow Pipe|Bottle|Lead Wave|White Noise|Pink Noise|Pitch Wind|Vox Noise|Breath|Metal Hit|Anvil|Wind Agogo|Feedback|Thump|Sparkle|Pole lp|Glass Hit|Cutters|Wood Crack|Scratch|Drop|E.Piano Atk|Piano Atk|Shamisen|Koto|Tuba|Log Drum|Timbale|Cabasa|Snare|Kick|Hi-Hat|Tom"
+  .split("|").map((n, i) => `${String(i + 1).padStart(3, '0')}: ${n}`);
+const LFO_SHAPES = ["TRI", "SAW", "SQR", "S&H", "RND"];
+const TVF_MODES  = ["OFF", "LPF", "BPF", "HPF"];
+const CATEGORIES = ["ALL", "BASS", "PAD", "LEAD", "KEYS", "BELL", "SYNTH", "INIT"];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const readU32LE = (b, o) => ((b[o]) | (b[o+1]<<8) | (b[o+2]<<16) | (b[o+3]<<24)) >>> 0;
+
+function setStatus(msg) { $('globalStatus').textContent = msg; }
+
+// ============================================================================
+// 2. WORKSPACE DOM GENERATOR
+// ============================================================================
+function buildWorkspaceDOM() {
+  const paneHtml = (k, title, defBank) => `
+    <section class="pane ${k==='L'?'act':''}" id="pane${k}" onclick="setActivePane('${k}')">
+      <div class="p-hdr">
+        <div class="p-tit"><span>[${title}]</span><span class="bdg" id="badge${k}">Blank Template</span></div>
+        <div class="row">
+          <input type="text" id="search${k}" class="sbox" placeholder="Search..." oninput="renderPane('${k}')">
+          <select id="catFilter${k}" class="flt-sel" onchange="renderPane('${k}')" title="Filter by Auto-Detected Category">
+            ${CATEGORIES.map(c => `<option value="${c}">${c === 'ALL' ? '🏷️ All Tags' : c}</option>`).join('')}
+          </select>
+          ${k==='R' ? `<button id="linkSameFileBtn" onclick="linkRightToLeft()" title="Link Right Pane to Left Pane memory">🔗 Share L</button>` : ''}
+          <button onclick="initBlankSvdInPane('${k}')" title="Create fresh 256-Patch / 128-Scene SVD5 in this pane">📄 New</button>
+          <label class="fbtn pri" title="Load .SVD backup or import .BIN / .SDZ / .SYX banks">
+            📂 Load (.svd/.bin/.sdz/.syx)
+            <input type="file" id="fileInput${k}" accept=".svd,.bin,.sdz,.syx">
+          </label>
+          <button id="saveBtn${k}" class="pri" onclick="saveSvd('${k}')" title="Download full JD08Backup.svd">💾 Save .SVD</button>
+        </div>
+      </div>
+      <div class="b-bar">
+        <div class="tabs" id="tabs${k}">
+          ${[0,1,2,3,'PRF1','PRF2'].map(b => {
+            const lbl = b==='PRF1'?'SCENES 1-8':b==='PRF2'?'SCENES 9-16':`BANK ${'ABCD'[b]}`;
+            return `<div class="tab ${String(b).startsWith('PRF')?'sc-tab':''} ${b===defBank?'active':''}" data-bank="${b}">${lbl}</div>`;
+          }).join('')}
+        </div>
+        <div class="row" style="padding-bottom:3px">
+          <button onclick="selectAllInBank('${k}')" title="Select all visible slots (Ctrl+A)">☑ All</button>
+          <button onclick="selectNoneInBank('${k}')" title="Deselect all">☐ None</button>
+          <button onclick="compactBank('${k}')" title="Move non-empty patches to the beginning of the bank">🧹 Compact</button>
+          <button onclick="sortBankAlpha('${k}')" title="Sort bank alphabetically A-Z">🔤 A-Z</button>
+          <button onclick="sortBankByCategory('${k}')" title="Group patches by category tag">🏷️ By Tag</button>
+        </div>
+      </div>
+      <div class="g-wrap" id="wrap${k}"></div>
+    </section>`;
+
+  $('workspace').innerHTML = paneHtml('L', 'LEFT PANE', 0) + `
+    <div class="bridge">
+      <span class="b-lbl" id="selCountLabel">Sel: 1</span>
+      <button class="bbtn pri" id="copyLtoRBtn" onclick="transferSelected('L','R',false)" title="Copy selected from Left to Right (F5)">
+        <span>Copy ➔</span><small>[F5] L->R</small>
+      </button>
+      <button class="bbtn" id="copyRtoLBtn" onclick="transferSelected('R','L',false)" title="Copy selected from Right to Left">
+        <span>⬅ Copy</span><small>R->L</small>
+      </button>
+      <button class="bbtn" id="bankCopyBtn" onclick="copyEntireActiveBank()" title="Copy entire 64-slot bank from active pane to target pane">
+        <span>Bank ➔➔</span><small>64 Slots</small>
+      </button>
+      <button class="bbtn" id="swapLRBtn" onclick="transferSelected('L','R',true)" title="Swap selected slots between Left and Right (F6)">
+        <span>⇄ Swap</span><small>[F6] L&lt;-&gt;R</small>
+      </button>
+      <hr style="width:100%;border:0;border-top:1px solid var(--brd)">
+      <button class="bbtn" id="copyClipBtn" onclick="copySelectionToClipboard(false)"><span>📋 Copy</span><small>[Ctrl+C]</small></button>
+      <button class="bbtn" id="cutClipBtn" onclick="copySelectionToClipboard(true)"><span>✂️ Cut</span><small>[Ctrl+X]</small></button>
+      <button class="bbtn" id="pasteClipBtn" disabled onclick="pasteClipboard()"><span>📥 Paste</span><small>[Ctrl+V]</small></button>
+      <hr style="width:100%;border:0;border-top:1px solid var(--brd)">
+      <button class="bbtn" id="renameBtn" onclick="quickRenameSelected()" title="Rename active slot (F2)"><span>✏️ Rename</span><small>[F2]</small></button>
+      <button class="bbtn" id="prefixBtn" onclick="batchRenamePrefix()" title="Add prefix to all selected items"><span>🏷️ Prefix</span><small>Batch</small></button>
+      <button class="bbtn dng" id="initSlotBtn" onclick="deleteSelectedSlots()" title="Initialize selected slots (Del / F8)"><span>🗑️ Init</span><small>[Del/F8]</small></button>
+    </div>` + paneHtml('R', 'RIGHT PANE', 1);
+}
+buildWorkspaceDOM();
+
+// ============================================================================
+// 3. STATE MANAGEMENT & UNDO / REDO STACK
+// ============================================================================
+const state = {
+  L: { data: null, bank: 0, selectedIdx: 0, selectedList: [0], lastClickedIdx: 0, fileName: 'Template_L.svd', visibleIndices: [] },
+  R: { data: null, bank: 1, selectedIdx: 64, selectedList: [64], lastClickedIdx: 64, fileName: 'Template_R.svd', isSharedWithL: false, visibleIndices: [] },
+  activePane: 'L',
+  dragMode: 'swap',
+  viewMode: 'grid', // 'grid' | 'list'
+  dragSource: null,
+  clipboard: { isScene: false, items: [] },
+  undoStack: [],
+  redoStack: [],
+  lcdEditSnapshotSaved: false
+};
+
+const isSceneBank = b => b === 'PRF1' || b === 'PRF2';
+const getPatchCode = i => (i < 0 || i > 255) ? '---' : `${'ABCD'[i >> 6]}${((i & 63) >> 3) + 1}${(i & 7) + 1}`;
+const getSceneCode = i => `S${String((i >> 3) + 1).padStart(2, '0')}-${(i & 7) + 1}`;
+
+function snapshotDoc(doc) {
+  return doc ? {
+    patches: doc.patches.map(p => ({ raw: new Uint8Array(p.raw), format: p.format, modified: p.modified })),
+    scenes: doc.scenes.map(s => ({ raw: new Uint8Array(s.raw), modified: s.modified }))
+  } : null;
+}
+
+function pushUndoState(label = 'Action') {
+  state.undoStack.push({
+    label,
+    L: snapshotDoc(state.L.data),
+    R: (!state.R.isSharedWithL) ? snapshotDoc(state.R.data) : null
+  });
+  if (state.undoStack.length > 40) state.undoStack.shift();
+  state.redoStack = [];
+  updateUndoButtons();
+}
+
+function restoreSnapshot(snap) {
+  if (snap.L && state.L.data) {
+    state.L.data.patches = snap.L.patches.map(p => parsePatchBlock(new Uint8Array(p.raw), p.format, p.modified));
+    state.L.data.scenes  = snap.L.scenes.map(s => parseSceneBlock(new Uint8Array(s.raw), s.modified));
+  }
+  if (snap.R && state.R.data && !state.R.isSharedWithL) {
+    state.R.data.patches = snap.R.patches.map(p => parsePatchBlock(new Uint8Array(p.raw), p.format, p.modified));
+    state.R.data.scenes  = snap.R.scenes.map(s => parseSceneBlock(new Uint8Array(s.raw), s.modified));
+  }
+  refreshAll();
+}
+
+function undo() {
+  if (!state.undoStack.length) return;
+  const snap = state.undoStack.pop();
+  state.redoStack.push({ label: snap.label, L: snapshotDoc(state.L.data), R: (!state.R.isSharedWithL) ? snapshotDoc(state.R.data) : null });
+  restoreSnapshot(snap);
+  setStatus(`Undid: ${snap.label}`);
+}
+
+function redo() {
+  if (!state.redoStack.length) return;
+  const snap = state.redoStack.pop();
+  state.undoStack.push({ label: snap.label, L: snapshotDoc(state.L.data), R: (!state.R.isSharedWithL) ? snapshotDoc(state.R.data) : null });
+  restoreSnapshot(snap);
+  setStatus(`Redid: ${snap.label}`);
+}
+
+function updateUndoButtons() {
+  $('undoBtn').disabled = !state.undoStack.length;
+  $('redoBtn').disabled = !state.redoStack.length;
+  $('undoBtn').textContent = `↩ Undo (${state.undoStack.length})`;
+  $('redoBtn').textContent = `↪ Redo (${state.redoStack.length})`;
+}
+
+// ============================================================================
+// 4. BINARY ENGINE: SVD5 PARSER, STANDALONE GENERATOR & FORMAT TRANSLATORS
+// ============================================================================
+function decodeAscii(buf, start, len) {
+  let s = '';
+  for (let i = 0; i < len; i++) {
+    const c = buf[start + i];
+    if (c === 0) { s += ' '; continue; }
+    s += (c >= 32 && c < 127) ? String.fromCharCode(c) : ' ';
+  }
+  return s;
+}
+
+function writeAscii(buf, start, len, str) {
+  const p = String(str || "Init Patch").padEnd(len, ' ').slice(0, len);
+  for (let i = 0; i < len; i++) {
+    const c = p.charCodeAt(i);
+    buf[start + i] = (c >= 32 && c < 127) ? c : 32;
+  }
+}
+
+function detectPatchCategory(name, tones) {
+  const n = name.trim().toLowerCase();
+  if (!n || n.startsWith('init ') || n === 'init patch' || n === 'init tone' || !tones.some(t => t.active)) return 'INIT';
+  if (/bass|bs|sub|fret|slap/.test(n)) return 'BASS';
+  if (/pad|choir|str|atmo|sweep|vox|voice|warm/.test(n)) return 'PAD';
+  if (/lead|ld|solo|sync|saw/.test(n)) return 'LEAD';
+  if (/ep|piano|clav|org|key|harpsi|celest/.test(n)) return 'KEYS';
+  if (/bell|glass|vibe|marimba|chime|kalimba|gamelan|pluck|harp/.test(n)) return 'BELL';
+  const act = tones.filter(t => t.active);
+  if (act.some(t => t.waveIdx >= 48 && t.waveIdx <= 52)) return 'BASS';
+  if (act.some(t => t.waveIdx >= 24 && t.waveIdx <= 37)) return 'KEYS';
+  if (act.some(t => t.waveIdx >= 38 && t.waveIdx <= 47)) return 'BELL';
+  return (act.reduce((a, t) => a + t.tvaEnv.T1, 0) / act.length >= 25) ? 'PAD' : 'SYNTH';
+}
+
+function parsePatchBlock(block, format = 'JD-08 .SVD', modified = false) {
+  const raw = new Uint8Array(PATCH_SIZE_JD08);
+  raw.set(block.slice(0, PATCH_SIZE_JD08));
+  raw.set(JD08_PATCH_HEADER, 0);
+
+  const name = decodeAscii(raw, 0x010, 16);
+  const patchLevel = raw[0x7B3] || raw[0x24] || 80;
+  const tones = [0, 1, 2, 3].map(t => {
+    const o = 0x670 + t * 80;
+    const waveIdx = raw[o + 0x14] | (raw[o + 0x15] << 8);
+    return {
+      active: raw[o] === 1 || ((raw[0x20] & (1 << t)) !== 0 && raw[o] !== 0),
+      waveIdx,
+      waveName: WAVES[waveIdx] || `Wave #${waveIdx + 1}`,
+      coarse: (raw[o + 0x1B] || 12) - 12,
+      lfo1Rate: raw[o + 0x06] || 0,
+      lfo1Shape: LFO_SHAPES[raw[o + 0x04]] || 'TRI',
+      tvfMode: TVF_MODES[raw[o + 0x30]] || 'LPF',
+      cutoff: raw[o + 0x33] || 0,
+      resonance: raw[o + 0x32] || 0,
+      level: raw[o + 0x3F] || 0,
+      pan: (raw[o + 0x41] || 50) - 50,
+      tvaEnv: {
+        T1: raw[o+0x48]||0, T2: raw[o+0x49]||0, T3: raw[o+0x4A]||0, T4: raw[o+0x4B]||0,
+        L1: raw[o+0x4C]||0, L2: raw[o+0x4D]||0, L3: raw[o+0x4E]||0
+      }
+    };
+  });
+  return { name, patchLevel, tones, category: detectPatchCategory(name, tones), format, modified, raw };
+}
+
+function createInitPatchRaw(name = 'INIT PATCH      ', tpl = null) {
+  const b = tpl ? new Uint8Array(tpl) : new Uint8Array(PATCH_SIZE_JD08);
+  b.set(JD08_PATCH_HEADER, 0);
+  writeAscii(b, 0x010, 16, name);
+  b[0x24] = 80; b[0x2E] = 1; b[0x2F] = 1; b[0x30] = 0x0D;
+  b[0x36] = 1;  b[0x38] = 2; b[0x39] = 2;
+  b[0x50] = 0x5D; b[0x51] = 1; b[0x52] = 0x7F; b[0x53] = 0x7F;
+  b[0x88] = 0x32; b[0x8A] = 0x32; b[0x8C] = 0x40; b[0x8E] = 0x7F;
+  b[0x7B3] = 80;
+  for (let t = 0; t < 4; t++) {
+    const o = 0x670 + t * 80;
+    b[o] = t === 0 ? 1 : 0;
+    b[o+0x04] = 0; b[o+0x06] = 40; b[o+0x14] = 0; b[o+0x15] = 0;
+    b[o+0x1B] = 12; b[o+0x30] = 1; b[o+0x32] = 0; b[o+0x33] = 100;
+    b[o+0x3F] = 80; b[o+0x41] = 50;
+    b[o+0x48] = 0; b[o+0x49] = 50; b[o+0x4A] = 50; b[o+0x4B] = 20;
+    b[o+0x4C] = 100; b[o+0x4D] = 80; b[o+0x4E] = 70;
+  }
+  return b;
+}
+
+function createInitSceneRaw(index = 0) {
+  const b = new Uint8Array(SCENE_SIZE_JD08);
+  writeAscii(b, 0x000, 16, `Init Scene ${String(index + 1).padStart(3, ' ')}`);
+  const tempoVal = 12000; // 120.00 BPM
+  b[0x012] = tempoVal & 0xFF;
+  b[0x013] = (tempoVal >> 8) & 0xFF;
+  b[0x034] = index % 256; // Part A Patch
+  b[0x035] = 100;         // Part A Level
+  b[0x088] = (index + 1) % 256; // Part B Patch
+  b[0x089] = 100;         // Part B Level
+  return b;
+}
+
+function parseSceneBlock(block, modified = false) {
+  const raw = new Uint8Array(SCENE_SIZE_JD08);
+  raw.set(block.slice(0, SCENE_SIZE_JD08));
+  const tempoRaw = (raw[0x012] | (raw[0x013] << 8));
+  const tempo = (tempoRaw > 2000 && tempoRaw < 30000 ? tempoRaw / 100 : 120).toFixed(1);
+  return {
+    name: decodeAscii(raw, 0x000, 16),
+    tempo,
+    partAPatchIdx: raw[0x034] || 0,
+    partALevel: raw[0x035] || 100,
+    partBPatchIdx: raw[0x088] || 0,
+    partBLevel: raw[0x089] || 100,
+    modified,
+    raw
+  };
+}
+
+// Synthesize complete 2,000,908-byte SVD5 container from scratch
+function createBlankSvdDocument() {
+  const rawBuffer = new Uint8Array(2000908);
+  const hdr = [
+    0x4e,0x00,0x53,0x56,0x44,0x35,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x50,0x52,0x46,0x61,0x44,0x44,0x30,0x37,0x50,0x00,0x00,0x00,0x10,0x82,0x16,0x00,
+    0x50,0x41,0x54,0x61,0x44,0x44,0x30,0x37,0x60,0x82,0x16,0x00,0x10,0x00,0x08,0x00,
+    0x53,0x59,0x53,0x61,0x44,0x44,0x30,0x37,0x70,0x82,0x1e,0x00,0x6c,0x05,0x00,0x00,
+    0x44,0x49,0x46,0x61,0x44,0x44,0x30,0x37,0xdc,0x87,0x1e,0x00,0x30,0x00,0x00,0x00
+  ];
+  rawBuffer.set(hdr, 0);
+  const prfBaseOffset = 0x50;
+  const patBaseOffset = 0x168260;
+  // Section headers
+  rawBuffer.set([0x80,0x00,0x00,0x00, 0x04,0x2d,0x00,0x00, 0x10,0x00,0x00,0x00, 0x00,0x00,0x00,0x00], prfBaseOffset);
+  rawBuffer.set([0x00,0x01,0x00,0x00, 0x00,0x08,0x00,0x00, 0x10,0x00,0x00,0x00, 0x00,0x00,0x00,0x00], patBaseOffset);
+
+  const patches = Array.from({ length: 256 }, (_, i) => {
+    const raw = createInitPatchRaw(`Init ${getPatchCode(i)}`);
+    rawBuffer.set(raw, patBaseOffset + 16 + i * PATCH_SIZE_JD08);
+    return parsePatchBlock(raw, 'INIT', false);
+  });
+  const scenes = Array.from({ length: 128 }, (_, i) => {
+    const raw = createInitSceneRaw(i);
+    rawBuffer.set(raw, prfBaseOffset + 16 + i * SCENE_SIZE_JD08);
+    return parseSceneBlock(raw, false);
+  });
+  return { rawBuffer, prfBaseOffset, patBaseOffset, patches, scenes };
+}
+
+// Parse native JD-08 .SVD file
+function parseSvdBuffer(uint8) {
+  if (uint8.length < 0x100 || decodeAscii(uint8, 2, 4) !== 'SVD5') {
+    throw new Error('Invalid .SVD header (expected SVD5).');
+  }
+  let prfBaseOffset = 0x50, patBaseOffset = -1;
+  for (let i = 16; i < 128; i += 16) {
+    const tag = decodeAscii(uint8, i, 8);
+    const off = readU32LE(uint8, i + 8);
+    if (tag.startsWith('PRFa')) prfBaseOffset = off;
+    if (tag.startsWith('PATa')) patBaseOffset = off;
+  }
+  if (patBaseOffset === -1) throw new Error('PATaDD07 section not found in .SVD file.');
+
+  const patches = Array.from({ length: 256 }, (_, i) => {
+    const start = patBaseOffset + 16 + i * PATCH_SIZE_JD08;
+    return parsePatchBlock(uint8.slice(start, start + PATCH_SIZE_JD08), 'JD-08 .SVD', false);
+  });
+
+  const hasScenes = prfBaseOffset + 16 + 128 * SCENE_SIZE_JD08 <= uint8.length;
+  const scenes = Array.from({ length: 128 }, (_, i) => {
+    if (!hasScenes) return parseSceneBlock(createInitSceneRaw(i), false);
+    const start = prfBaseOffset + 16 + i * SCENE_SIZE_JD08;
+    return parseSceneBlock(uint8.slice(start, start + SCENE_SIZE_JD08), false);
+  });
+
+  return { rawBuffer: new Uint8Array(uint8), prfBaseOffset, patBaseOffset, patches, scenes };
+}
+
+// Convert JD-800 VST (.bin) -> Array of 2048B Patch Objects
+function parseBIN(uint8) {
+  const magic = decodeAscii(uint8, 0, 4);
+  if (magic !== 'SVZa') throw new Error('Invalid .BIN file (expected SVZa header).');
+  const decomp = pako.inflate(uint8.slice(0x60));
+  if (decodeAscii(decomp, 0, 4) !== 'SVDx') throw new Error('Invalid inner SVDx stream after .BIN decompression.');
+
+  const headerSize = readU32LE(decomp, 4);
+  const itemSize   = readU32LE(decomp, 8);
+  const count      = readU32LE(decomp, 12);
+
+  const patches = [];
+  for (let i = 0; i < count; i++) {
+    const start = headerSize + i * itemSize;
+    const data = new Uint8Array(PATCH_SIZE_JD08);
+    data.set(decomp.slice(start, start + PATCH_SIZE_JD08));
+    const vstLevel = data[6];
+    data.set(JD08_PATCH_HEADER, 0);
+    if (data[0x24] === 0 && vstLevel > 0) data[0x24] = vstLevel;
+    if (data[0x7B3] === 0) data[0x7B3] = data[0x24] || 80;
+    data[0x2F] = 0x01;
+    patches.push(parsePatchBlock(data, 'VST .BIN', true));
+  }
+  return patches;
+}
+
+// Convert ZEN-Core (.sdz) -> Array of 2048B Patch Objects
+function parseSDZ(uint8) {
+  if (decodeAscii(uint8, 0, 4) !== 'VEXP') throw new Error('Invalid .SDZ file (expected VEXP header).');
+  const compressed = uint8.slice(0x70);
+  let decomp;
+  try { decomp = pako.inflateRaw(compressed); } catch (e) { decomp = pako.inflate(compressed); }
+
+  const patches = [];
+  let foundStructured = false;
+  for (let i = 0; i < Math.min(decomp.length - 16, 4096); i++) {
+    if (decodeAscii(decomp, i, 4) === 'SVDx') {
+      const hSize = readU32LE(decomp, i + 4);
+      const iSize = readU32LE(decomp, i + 8);
+      const cnt   = readU32LE(decomp, i + 12);
+      if (cnt > 0 && cnt <= 256 && i + hSize + cnt * iSize <= decomp.length) {
+        for (let p = 0; p < cnt; p++) {
+          const start = i + hSize + p * iSize;
+          const data = new Uint8Array(PATCH_SIZE_JD08);
+          data.set(decomp.slice(start, start + PATCH_SIZE_JD08));
+          data.set(JD08_PATCH_HEADER, 0);
+          patches.push(parsePatchBlock(data, 'ZEN .SDZ', true));
+        }
+        foundStructured = true;
+        break;
+      }
+    }
+  }
+
+  if (!foundStructured) {
+    for (let offset = 0; offset + PATCH_SIZE_JD08 <= decomp.length; offset += 16) {
+      let validAscii = true, nonSpace = 0;
+      for (let c = 0; c < 16; c++) {
+        const b = decomp[offset + 16 + c];
+        if (b < 32 || b > 126) { validAscii = false; break; }
+        if (b > 32) nonSpace++;
+      }
+      if (validAscii && nonSpace >= 3 && decomp[offset + 2] <= 0x10 && decomp[offset + 0x38] === 0x02 && decomp[offset + 0x39] === 0x02) {
+        const data = new Uint8Array(PATCH_SIZE_JD08);
+        data.set(decomp.slice(offset, offset + PATCH_SIZE_JD08));
+        data.set(JD08_PATCH_HEADER, 0);
+        patches.push(parsePatchBlock(data, 'ZEN .SDZ', true));
+        offset += PATCH_SIZE_JD08 - 16;
+      }
+    }
+  }
+  if (!patches.length) throw new Error('No compatible JD-800 patches found inside .SDZ container.');
+  return patches;
+}
+
+// Convert Classic JD-800 384-byte SysEx slice -> 2048B JD-08 Patch
+function convertJD800Syx384ToJD08(syx384) {
+  const data = createInitPatchRaw(decodeAscii(syx384, 0, 16));
+  const patchLevel = syx384[18] <= 100 ? syx384[18] : 80;
+  data[0x24] = patchLevel;
+  data[0x7B3] = patchLevel;
+  const activeTones = syx384[26] & 0x0F;
+  data[0x20] = activeTones;
+  data[0x36] = activeTones;
+  data[0x84] = syx384[27];
+  data[0x86] = syx384[28];
+  data[0x54] = syx384[29];
+  data[0x56] = syx384[30];
+  data[0x58] = syx384[31];
+  data[0x5A] = syx384[32];
+  data[0x5C] = syx384[33];
+
+  const toneOffsetsJD800 = [96, 168, 240, 312];
+  const toneClassicOffsetsJD08 = [0x670, 0x6C0, 0x710, 0x760];
+  const toneEngineOffsetsJD08  = [0xD8,  0x148, 0x1B8, 0x228];
+
+  for (let t = 0; t < 4; t++) {
+    const srcOff = toneOffsetsJD800[t];
+    if (srcOff + 72 > syx384.length) break;
+    const tone = syx384.slice(srcOff, srcOff + 72);
+    const isAct = (activeTones & (1 << t)) ? 1 : 0;
+
+    const waveMSB = tone[8], waveLSB = tone[9];
+    const waveID  = ((waveMSB & 0x01) << 7) | (waveLSB & 0x7F);
+    const coarse  = tone[11];
+    const fine    = tone[12];
+    const cutoff  = tone[32];
+    const res     = tone[33];
+    const tvaLvl  = tone[52];
+
+    // Populate JD-08 Inspector block (0x670 + t*80)
+    const cOff = toneClassicOffsetsJD08[t];
+    data[cOff]        = isAct;
+    data[cOff + 0x04] = tone[18] || 0;      // LFO1 Shape
+    data[cOff + 0x06] = tone[19] || 40;     // LFO1 Rate
+    data[cOff + 0x14] = waveID & 0xFF;      // Wave LSB
+    data[cOff + 0x15] = (waveID >> 8) & 0xFF;
+    data[cOff + 0x1B] = Math.max(0, Math.min(24, coarse - 36));
+    data[cOff + 0x30] = (tone[31] % 4) || 1; // TVF Mode
+    data[cOff + 0x32] = res;
+    data[cOff + 0x33] = cutoff;
+    data[cOff + 0x3F] = tvaLvl;
+    data[cOff + 0x41] = 50;
+    data[cOff + 0x48] = tone[56] || 0;
+    data[cOff + 0x49] = tone[58] || 50;
+    data[cOff + 0x4A] = tone[60] || 50;
+    data[cOff + 0x4B] = tone[62] || 20;
+    data[cOff + 0x4C] = tone[57] || 100;
+    data[cOff + 0x4D] = tone[59] || 80;
+    data[cOff + 0x4E] = tone[61] || 70;
+
+    // Populate JD-08 Execution Engine block (0xD8 + t*0x70)
+    const eOff = toneEngineOffsetsJD08[t];
+    data[eOff + 0x00] = cutoff;
+    data[eOff + 0x14] = isAct;
+    data[eOff + 0x1A] = waveID + 1;
+    data[eOff + 0x22] = tvaLvl;
+    data[eOff + 0x28] = Math.min(255, cutoff * 2);
+    data[eOff + 0x2A] = res;
+    data[eOff + 0x2C] = coarse;
+    data[eOff + 0x2E] = fine;
+  }
+  return parsePatchBlock(data, 'JD-800 .SYX', true);
+}
+
+// Parse Classic JD-800 (.syx) -> Array of 2048B Patch Objects
+function parseSYX(uint8) {
+  const memory = new Map();
+  let i = 0;
+  while (i < uint8.length) {
+    if (uint8[i] === 0xF0) {
+      let end = i + 1;
+      while (end < uint8.length && uint8[end] !== 0xF7) end++;
+      if (end < uint8.length && uint8[i+1] === 0x41 && uint8[i+3] === 0x3D && uint8[i+4] === 0x12) {
+        const a1 = uint8[i+5], a2 = uint8[i+6], a3 = uint8[i+7];
+        const linearAddr = (a1 << 14) | (a2 << 7) | a3;
+        const payload = uint8.slice(i + 8, end - 1);
+        for (let b = 0; b < payload.length; b++) memory.set(linearAddr + b, payload[b]);
+      }
+      i = end + 1;
+    } else i++;
+  }
+
+  const patches = [];
+  const bankBase = (0x05 << 14);
+  for (let p = 0; p < 64; p++) {
+    const pAddr = bankBase + p * 384;
+    if (memory.has(pAddr)) {
+      const syx384 = new Uint8Array(384);
+      for (let b = 0; b < 384; b++) syx384[b] = memory.get(pAddr + b) || 0;
+      patches.push(convertJD800Syx384ToJD08(syx384));
+    }
+  }
+
+  if (!patches.length && memory.has(0)) {
+    const syx384 = new Uint8Array(384);
+    for (let b = 0; b < 384; b++) syx384[b] = memory.get(b) || 0;
+    patches.push(convertJD800Syx384ToJD08(syx384));
+  }
+
+  if (!patches.length) {
+    const sortedAddrs = Array.from(memory.keys()).sort((a,b) => a - b);
+    if (sortedAddrs.length >= 384) {
+      const flat = new Uint8Array(sortedAddrs.length);
+      for (let k = 0; k < sortedAddrs.length; k++) flat[k] = memory.get(sortedAddrs[k]);
+      const startOff = flat.length >= 64 * 384 ? flat.length - 64 * 384 : 0;
+      for (let pos = startOff; pos + 384 <= flat.length; pos += 384) {
+        patches.push(convertJD800Syx384ToJD08(flat.slice(pos, pos + 384)));
+      }
+    }
+  }
+  if (!patches.length) throw new Error('No valid JD-800 SysEx patch messages found in .SYX file.');
+  return patches;
+}
+
+function applySceneRelinkMap(doc, oldToNewMap) {
+  if (!doc || !$('autoRelinkCheckbox').checked || !oldToNewMap.size) return;
+  doc.scenes.forEach(sc => {
+    if (oldToNewMap.has(sc.partAPatchIdx)) { sc.raw[0x034] = sc.partAPatchIdx = oldToNewMap.get(sc.partAPatchIdx); sc.modified = true; }
+    if (oldToNewMap.has(sc.partBPatchIdx)) { sc.raw[0x088] = sc.partBPatchIdx = oldToNewMap.get(sc.partBPatchIdx); sc.modified = true; }
+  });
+}
+
+// ============================================================================
+// 5. FILE LOADING, EXPORT & MULTI-FORMAT BANK INJECTION
+// ============================================================================
+function initBlankSvdInPane(k, silent = false) {
+  if (!silent) pushUndoState(`New Blank SVD (${k})`);
+  const p = state[k];
+  p.data = createBlankSvdDocument();
+  p.fileName = `JD08Backup_${k}.svd`;
+  if (k === 'R') p.isSharedWithL = false;
+  else if (state.R.isSharedWithL) { state.R.data = p.data; updatePaneUI('R'); }
+  updatePaneUI(k);
+  if (!silent) setStatus(`Initialized blank 256-Patch / 128-Scene SVD5 template in Pane ${k}.`);
+}
+
+async function handleFileLoad(k, file) {
+  if (!file) return;
+  try {
+    const uint8 = new Uint8Array(await file.arrayBuffer());
+    const ext = file.name.split('.').pop().toLowerCase();
+    const p = state[k];
+
+    if (ext === 'svd') {
+      pushUndoState(`Load SVD (${k})`);
+      p.data = parseSvdBuffer(uint8);
+      p.fileName = file.name;
+      if (k === 'R') p.isSharedWithL = false;
+      else if (state.R.isSharedWithL) { state.R.data = p.data; state.R.fileName = file.name; updatePaneUI('R'); }
+      const s = isSceneBank(p.bank) ? (p.bank === 'PRF1' ? 0 : 64) : p.bank * 64;
+      p.selectedIdx = s; p.selectedList = [s]; p.lastClickedIdx = s;
+      updatePaneUI(k);
+      setActivePane(k);
+      setStatus(`Loaded full JD-08 .SVD backup: ${file.name} (256 Patches, 128 Scenes)`);
+    } else if (['bin', 'sdz', 'syx'].includes(ext)) {
+      let importedPatches = [];
+      if (ext === 'bin') importedPatches = parseBIN(uint8);
+      else if (ext === 'sdz') importedPatches = parseSDZ(uint8);
+      else if (ext === 'syx') importedPatches = parseSYX(uint8);
+
+      if (!p.data) p.data = createBlankSvdDocument();
+      if (isSceneBank(p.bank)) switchBankTab(k, 0, true);
+
+      pushUndoState(`Import ${ext.toUpperCase()} (${k})`);
+      // Inject imported patches starting at current bank start (if 64 patches) or selected slot
+      const baseIdx = importedPatches.length >= 64 ? (p.bank * 64) : p.selectedIdx;
+      const newSel = [];
+      importedPatches.forEach((patObj, offset) => {
+        const target = baseIdx + offset;
+        if (target < 256) {
+          p.data.patches[target] = patObj;
+          newSel.push(target);
+        }
+      });
+      p.fileName = `${file.name} ➔ SVD`;
+      if (k === 'R') p.isSharedWithL = false;
+      if (newSel.length) { p.selectedList = newSel; p.selectedIdx = newSel[0]; p.lastClickedIdx = newSel[0]; }
+      updatePaneUI(k);
+      setActivePane(k);
+      setStatus(`Translated & imported ${newSel.length} patches from ${file.name} into Pane ${k} (${getPatchCode(baseIdx)}..${getPatchCode(newSel[newSel.length-1])}).`);
+    } else {
+      throw new Error('Unsupported file extension. Use .svd, .bin, .sdz, or .syx');
+    }
+  } catch (err) {
+    alert(`File Import Error: ${err.message}`);
+  }
+}
+
+function linkRightToLeft() {
+  if (!state.L.data) return;
+  Object.assign(state.R, { data: state.L.data, fileName: state.L.fileName, isSharedWithL: true });
+  const s = isSceneBank(state.R.bank) ? (state.R.bank === 'PRF1' ? 0 : 64) : state.R.bank * 64;
+  state.R.selectedIdx = s; state.R.selectedList = [s]; state.R.lastClickedIdx = s;
+  updatePaneUI('R');
+  setStatus('Right Pane is now linked to Left Pane memory (Shared File Mode).');
+}
+
+function saveSvd(k) {
+  const doc = state[k].data;
+  if (!doc) return;
+  doc.scenes.forEach((s, i) => doc.rawBuffer.set(s.raw, doc.prfBaseOffset + 16 + i * SCENE_SIZE_JD08));
+  doc.patches.forEach((p, i) => {
+    p.raw.set(JD08_PATCH_HEADER, 0);
+    doc.rawBuffer.set(p.raw, doc.patBaseOffset + 16 + i * PATCH_SIZE_JD08);
+  });
+  const url = URL.createObjectURL(new Blob([doc.rawBuffer], { type: 'application/octet-stream' }));
+  const dlName = state[k].fileName.toLowerCase().endsWith('.svd') ? state[k].fileName : 'JD08Backup.svd';
+  Object.assign(document.createElement('a'), { href: url, download: dlName }).click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  setStatus(`Exported ${dlName} (${doc.rawBuffer.length.toLocaleString()} bytes).`);
+}
+
+// ============================================================================
+// 6. RENDERING ENGINE (GRID VIEW & COMMANDER LIST VIEW)
+// ============================================================================
+function refreshAll() {
+  renderPane('L');
+  renderPane('R');
+  updateInspector();
+  updateBridgeButtons();
+  updateUndoButtons();
+}
+
+function updatePaneUI(k) {
+  const p = state[k];
+  if (!p.data) return;
+  const b = $(`badge${k}`);
+  b.textContent = (k === 'R' && p.isSharedWithL) ? `🔗 Shared with L (${p.fileName})` : p.fileName;
+  b.className = (k === 'R' && p.isSharedWithL) ? 'bdg shd' : 'bdg';
+  renderPane(k);
+  updateBridgeButtons();
+}
+
+function updateBridgeButtons() {
+  const act = state[state.activePane], cnt = act.selectedList.length;
+  $('selCountLabel').textContent = `Sel: ${cnt} (${state.activePane})`;
+  $('pasteClipBtn').disabled = !state.clipboard.items.length;
+}
+
+function renderPane(k) {
+  const p = state[k];
+  if (!p.data) return;
+  const wrap = $(`wrap${k}`);
+  const q = $(`search${k}`).value.trim().toLowerCase();
+  const catFlt = $(`catFilter${k}`).value;
+  const scMode = isSceneBank(p.bank);
+
+  wrap.innerHTML = '';
+  p.visibleIndices = [];
+
+  const isFiltering = q !== '' || (!scMode && catFlt !== 'ALL');
+  const start = isFiltering ? 0 : (scMode ? (p.bank === 'PRF1' ? 0 : 64) : p.bank * 64);
+  const end   = isFiltering ? (scMode ? 128 : 256) : start + 64;
+
+  const container = document.createElement('div');
+  if (state.viewMode === 'grid') {
+    container.className = 'grid';
+  } else {
+    container.className = 'list-tbl';
+    container.innerHTML = scMode
+      ? `<div class="list-hdr"><div>SLOT</div><div>SCENE NAME</div><div>TEMPO</div><div>PART A</div><div>PART B</div></div>`
+      : `<div class="list-hdr"><div>SLOT</div><div>PATCH NAME</div><div>TAG</div><div>TONES</div><div style="text-align:right">SOURCE</div></div>`;
+  }
+
+  for (let i = start; i < end; i++) {
+    if (scMode) {
+      const sc = p.data.scenes[i], code = getSceneCode(i);
+      const pA = getPatchCode(sc.partAPatchIdx), pB = getPatchCode(sc.partBPatchIdx);
+      const nA = p.data.patches[sc.partAPatchIdx]?.name.trim() || '', nB = p.data.patches[sc.partBPatchIdx]?.name.trim() || '';
+      if (q && ![sc.name, code, nA, nB].some(x => x.toLowerCase().includes(q))) continue;
+
+      p.visibleIndices.push(i);
+      const ord = p.selectedList.indexOf(i), sel = ord !== -1;
+      const init = !sc.name.trim() || sc.name.trim().toLowerCase().startsWith('init scene');
+
+      const el = document.createElement('div');
+      el.draggable = true;
+      if (state.viewMode === 'grid') {
+        el.className = `cell sc ${sel?'sel':''} ${i===p.selectedIdx?'pri-sel':''} ${init?'emp':''} ${sc.modified?'mod':''}`;
+        el.innerHTML = `${sel && p.selectedList.length>1 ? `<span class="s-ord">${ord+1}</span>`:''}
+          <div class="cid"><span>${code}</span><span>${Math.round(sc.tempo)}BPM</span></div>
+          <div class="cname">${esc(sc.name.trim() || '(Scene)')}</div>
+          <div class="cmeta"><span>A:${pA}</span><span>B:${pB}</span></div>`;
+      } else {
+        el.className = `list-row sc ${sel?'sel':''} ${i===p.selectedIdx?'pri-sel':''} ${init?'emp':''}`;
+        el.innerHTML = `<div class="cid">[${code}]${sc.modified?'*':''}</div>
+          <div class="cname">${esc(sc.name)}</div>
+          <div>${sc.tempo}</div>
+          <div>A:${pA}</div>
+          <div>B:${pB}</div>`;
+      }
+      bindSlotEvents(el, k, true, i);
+      container.appendChild(el);
+    } else {
+      const pat = p.data.patches[i], code = getPatchCode(i);
+      if (catFlt !== 'ALL' && pat.category !== catFlt) continue;
+      const wMatch = pat.tones.some(t => t.active && t.waveName.toLowerCase().includes(q));
+      if (q && !pat.name.toLowerCase().includes(q) && !code.toLowerCase().includes(q) && !wMatch && !pat.category.toLowerCase().includes(q)) continue;
+
+      p.visibleIndices.push(i);
+      const ord = p.selectedList.indexOf(i), sel = ord !== -1;
+      const firstT = pat.tones.find(t => t.active);
+
+      const el = document.createElement('div');
+      el.draggable = true;
+      if (state.viewMode === 'grid') {
+        el.className = `cell ${sel?'sel':''} ${i===p.selectedIdx?'pri-sel':''} ${pat.category==='INIT'?'emp':''} ${pat.modified?'mod':''}`;
+        el.innerHTML = `${sel && p.selectedList.length>1 ? `<span class="s-ord">${ord+1}</span>`:''}
+          <div class="cid"><span>${code}</span><div class="dots">${pat.tones.map(t=>`<span class="dot ${t.active?'on':''}"></span>`).join('')}</div></div>
+          <div class="cname">${esc(pat.name.trim() || '(Empty)')}</div>
+          <div class="cmeta"><span class="ctag ${pat.category}">${pat.category}</span><span>W:${esc(firstT ? firstT.waveName.slice(0,3) : '---')}</span></div>`;
+      } else {
+        el.className = `list-row ${sel?'sel':''} ${i===p.selectedIdx?'pri-sel':''} ${pat.category==='INIT'?'emp':''}`;
+        el.innerHTML = `<div class="cid">[${code}]${pat.modified?'*':''}</div>
+          <div class="cname">${esc(pat.name)}</div>
+          <div><span class="ctag ${pat.category}">${pat.category}</span></div>
+          <div><div class="dots">${pat.tones.map(t=>`<span class="dot ${t.active?'on':''}"></span>`).join('')}</div></div>
+          <div style="text-align:right;font-size:.63rem;color:var(--mut)">${esc(pat.format)}</div>`;
+      }
+      bindSlotEvents(el, k, false, i);
+      container.appendChild(el);
+    }
+  }
+  wrap.appendChild(container);
+}
+
+function bindSlotEvents(el, k, isScene, i) {
+  el.onclick = e => { e.stopPropagation(); handleSlotSelection(k, i, e); };
+  el.ondblclick = e => { e.stopPropagation(); quickRenamePrompt(k, i, isScene); };
+  el.ondragstart = e => {
+    const p = state[k];
+    if (!p.selectedList.includes(i)) { p.selectedList = [i]; p.selectedIdx = i; renderPane(k); }
+    state.dragSource = { pane: k, isScene, indices: [...p.selectedList] };
+    e.dataTransfer.effectAllowed = 'copyMove';
+  };
+  el.ondragover = e => {
+    if (state.dragSource && state.dragSource.isScene === isScene) {
+      e.preventDefault();
+      el.classList.add('d-over');
+    }
+  };
+  el.ondragleave = () => el.classList.remove('d-over');
+  el.ondrop = e => {
+    e.preventDefault();
+    el.classList.remove('d-over');
+    if (state.dragSource && state.dragSource.isScene === isScene) {
+      const isCrossPane = state.dragSource.pane !== k;
+      const useSwap = isCrossPane ? (state.dragMode === 'swap') : (state.dragMode === 'swap');
+      executeBatchTransfer(state.dragSource.pane, state.dragSource.indices, k, i, isScene, useSwap);
+      state.dragSource = null;
+    }
+  };
+}
+
+function handleSlotSelection(k, idx, e) {
+  const p = state[k];
+  if (e.shiftKey && p.lastClickedIdx !== null) {
+    const v = p.visibleIndices, a = v.indexOf(p.lastClickedIdx), b = v.indexOf(idx);
+    p.selectedList = (a !== -1 && b !== -1) ? v.slice(Math.min(a, b), Math.max(a, b) + 1) : [idx];
+    p.selectedIdx = idx;
+  } else if (e.ctrlKey || e.metaKey) {
+    const pos = p.selectedList.indexOf(idx);
+    if (pos >= 0 && p.selectedList.length > 1) p.selectedList.splice(pos, 1);
+    else if (pos < 0) p.selectedList.push(idx);
+    p.selectedIdx = p.selectedList[p.selectedList.length - 1];
+    p.lastClickedIdx = idx;
+  } else {
+    p.selectedList = [idx]; p.selectedIdx = idx; p.lastClickedIdx = idx;
+  }
+  setActivePane(k);
+}
+
+// ============================================================================
+// 7. BATCH OPERATIONS: TRANSFER, BANK COPY, SORTING, COMPACTING & CLIPBOARD
+// ============================================================================
+function executeBatchTransfer(srcPane, srcIndices, dstPane, dstStartIdx, isScene, isSwap) {
+  const sDoc = state[srcPane].data, dDoc = state[dstPane].data;
+  if (!sDoc || !dDoc || !srcIndices.length) return;
+  pushUndoState(isSwap ? 'Swap Slots' : 'Copy Slots');
+  const max = isScene ? 128 : 256, newSel = [];
+
+  if (isSwap && sDoc === dDoc) {
+    const arr = isScene ? sDoc.scenes : sDoc.patches;
+    const perm = Array.from({ length: max }, (_, i) => i);
+    srcIndices.forEach((sIdx, off) => {
+      const tIdx = dstStartIdx + off;
+      if (tIdx >= max) return;
+      [arr[sIdx], arr[tIdx]] = [arr[tIdx], arr[sIdx]];
+      arr[sIdx].modified = true; arr[tIdx].modified = true;
+      [perm[sIdx], perm[tIdx]] = [perm[tIdx], perm[sIdx]];
+      newSel.push(tIdx);
+    });
+    if (!isScene) {
+      const map = new Map();
+      perm.forEach((oldPos, newPos) => { if (oldPos !== newPos) map.set(oldPos, newPos); });
+      applySceneRelinkMap(sDoc, map);
+    }
+  } else {
+    const cSrc = srcIndices.map(i => {
+      const item = isScene ? sDoc.scenes[i] : sDoc.patches[i];
+      return { raw: new Uint8Array(item.raw), format: item.format };
+    });
+    const cDst = srcIndices.map((_, o) => {
+      if (dstStartIdx + o >= max) return null;
+      const item = isScene ? dDoc.scenes[dstStartIdx + o] : dDoc.patches[dstStartIdx + o];
+      return { raw: new Uint8Array(item.raw), format: item.format };
+    });
+
+    srcIndices.forEach((sIdx, o) => {
+      const tIdx = dstStartIdx + o;
+      if (tIdx >= max) return;
+      if (isScene) {
+        if (isSwap && cDst[o]) sDoc.scenes[sIdx] = parseSceneBlock(cDst[o].raw, true);
+        dDoc.scenes[tIdx] = parseSceneBlock(cSrc[o].raw, true);
+      } else {
+        if (isSwap && cDst[o]) sDoc.patches[sIdx] = parsePatchBlock(cDst[o].raw, cDst[o].format, true);
+        dDoc.patches[tIdx] = parsePatchBlock(cSrc[o].raw, cSrc[o].format, true);
+      }
+      newSel.push(tIdx);
+    });
+  }
+  Object.assign(state[dstPane], { selectedList: newSel, selectedIdx: newSel[0] ?? dstStartIdx, lastClickedIdx: newSel[0] ?? dstStartIdx });
+  setStatus(`${isSwap ? 'Swapped' : 'Copied'} ${newSel.length} slot(s) to Pane ${dstPane}.`);
+  setActivePane(dstPane);
+}
+
+function transferSelected(from, to, isSwap) {
+  if (isSceneBank(state[from].bank) !== isSceneBank(state[to].bank)) {
+    return alert('Both panes must be in the same mode (Patches A-D or Scenes 1-16)!');
+  }
+  executeBatchTransfer(from, state[from].selectedList, to, state[to].selectedIdx, isSceneBank(state[from].bank), isSwap);
+}
+
+function copyEntireActiveBank() {
+  const from = state.activePane, to = from === 'L' ? 'R' : 'L';
+  if (isSceneBank(state[from].bank) !== isSceneBank(state[to].bank)) {
+    return alert('Both panes must be in the same mode (Patches or Scenes) to copy a 64-slot bank!');
+  }
+  const sc = isSceneBank(state[from].bank);
+  const srcStart = sc ? (state[from].bank === 'PRF1' ? 0 : 64) : state[from].bank * 64;
+  const dstStart = sc ? (state[to].bank === 'PRF1' ? 0 : 64) : state[to].bank * 64;
+  const indices = Array.from({ length: 64 }, (_, i) => srcStart + i);
+  executeBatchTransfer(from, indices, to, dstStart, sc, false);
+}
+
+function selectAllInBank(k) {
+  const p = state[k];
+  if (!p.visibleIndices.length) return;
+  p.selectedList = [...p.visibleIndices];
+  p.selectedIdx = p.visibleIndices[0];
+  setActivePane(k);
+}
+
+function selectNoneInBank(k) {
+  const p = state[k];
+  p.selectedList = [p.selectedIdx];
+  setActivePane(k);
+}
+
+function copySelectionToClipboard(isCut = false) {
+  const p = state[state.activePane];
+  if (!p.selectedList.length) return;
+  const sc = isSceneBank(p.bank);
+  state.clipboard = {
+    isScene: sc,
+    items: p.selectedList.map(i => {
+      const it = sc ? p.data.scenes[i] : p.data.patches[i];
+      return { raw: new Uint8Array(it.raw), format: it.format || 'CLIPBOARD' };
+    })
+  };
+  $('clipStatus').textContent = `Clipboard: ${state.clipboard.items.length} ${sc ? 'Scene(s)' : 'Patch(es)'}`;
+  if (isCut) deleteSelectedSlots(); else updateBridgeButtons();
+}
+
+function pasteClipboard() {
+  const p = state[state.activePane];
+  if (!state.clipboard.items.length) return;
+  const sc = isSceneBank(p.bank);
+  if (sc !== state.clipboard.isScene) return alert('Clipboard data type does not match active tab (Patches vs Scenes)!');
+  pushUndoState('Paste Clipboard');
+  const max = sc ? 128 : 256, newSel = [];
+  state.clipboard.items.forEach((item, o) => {
+    const t = p.selectedIdx + o;
+    if (t >= max) return;
+    if (sc) p.data.scenes[t] = parseSceneBlock(new Uint8Array(item.raw), true);
+    else p.data.patches[t] = parsePatchBlock(new Uint8Array(item.raw), item.format, true);
+    newSel.push(t);
+  });
+  p.selectedList = newSel;
+  setStatus(`Pasted ${newSel.length} item(s) into Pane ${state.activePane}.`);
+  refreshAll();
+}
+
+function deleteSelectedSlots() {
+  const p = state[state.activePane];
+  if (!p.selectedList.length) return;
+  pushUndoState('Init Slots');
+  const sc = isSceneBank(p.bank);
+  p.selectedList.forEach(i => {
+    if (sc) p.data.scenes[i] = parseSceneBlock(createInitSceneRaw(i), true);
+    else p.data.patches[i] = parsePatchBlock(createInitPatchRaw('INIT PATCH      ', p.data.patches[i].raw), 'INIT', true);
+  });
+  setStatus(`Initialized ${p.selectedList.length} slot(s) in Pane ${state.activePane}.`);
+  refreshAll();
+}
+
+function reorderBank(k, comparator, label = 'Reorder') {
+  const p = state[k];
+  pushUndoState(label);
+  if (isSceneBank(p.bank)) {
+    const s = p.bank === 'PRF1' ? 0 : 64;
+    const sub = p.data.scenes.slice(s, s + 64).sort(comparator);
+    for (let i = 0; i < 64; i++) { sub[i].modified = true; p.data.scenes[s + i] = sub[i]; }
+  } else {
+    const s = p.bank * 64;
+    const indexed = Array.from({ length: 64 }, (_, i) => ({ oldIdx: s + i, item: p.data.patches[s + i] }))
+      .sort((a, b) => comparator(a.item, b.item));
+    const map = new Map();
+    indexed.forEach((entry, i) => {
+      const nIdx = s + i;
+      entry.item.modified = true;
+      p.data.patches[nIdx] = entry.item;
+      if (entry.oldIdx !== nIdx) map.set(entry.oldIdx, nIdx);
+    });
+    applySceneRelinkMap(p.data, map);
+  }
+  setStatus(`${label} completed in Pane ${k}.`);
+  setActivePane(k);
+}
+
+const isInitItem = x => x.category ? x.category === 'INIT' : (!x.name.trim() || x.name.trim().toLowerCase().startsWith('init scene'));
+const compactBank = k => reorderBank(k, (a, b) => (isInitItem(a) ? 1 : 0) - (isInitItem(b) ? 1 : 0), 'Compact Bank');
+const sortBankAlpha = k => reorderBank(k, (a, b) => isInitItem(a) !== isInitItem(b) ? (isInitItem(a) ? 1 : -1) : a.name.trim().localeCompare(b.name.trim()), 'Sort A-Z');
+const sortBankByCategory = k => reorderBank(k, (a, b) => {
+  if (isInitItem(a) !== isInitItem(b)) return isInitItem(a) ? 1 : -1;
+  const c = (a.category || '').localeCompare(b.category || '');
+  return c !== 0 ? c : a.name.trim().localeCompare(b.name.trim());
+}, 'Sort by Tag');
+
+function quickRenameSelected() {
+  const p = state[state.activePane];
+  quickRenamePrompt(state.activePane, p.selectedIdx, isSceneBank(p.bank));
+}
+
+function quickRenamePrompt(k, idx, sc) {
+  const p = state[k], item = sc ? p.data.scenes[idx] : p.data.patches[idx];
+  const next = prompt(`Rename ${sc ? getSceneCode(idx) : getPatchCode(idx)} (max 16 ASCII chars):`, item.name.trimEnd());
+  if (next === null) return;
+  pushUndoState('Rename');
+  writeAscii(item.raw, sc ? 0 : 0x010, 16, next);
+  if (sc) p.data.scenes[idx] = parseSceneBlock(item.raw, true);
+  else p.data.patches[idx] = parsePatchBlock(item.raw, item.format, true);
+  refreshAll();
+}
+
+function batchRenamePrefix() {
+  const p = state[state.activePane];
+  if (!p.selectedList.length) return;
+  const pref = prompt('Enter prefix to prepend to selected items (e.g. "BS ", "PAD "):', 'BS ');
+  if (!pref) return;
+  pushUndoState('Batch Prefix');
+  const sc = isSceneBank(p.bank);
+  p.selectedList.forEach(i => {
+    const item = sc ? p.data.scenes[i] : p.data.patches[i];
+    writeAscii(item.raw, sc ? 0 : 0x010, 16, pref + item.name.trim());
+    if (sc) p.data.scenes[i] = parseSceneBlock(item.raw, true);
+    else p.data.patches[i] = parsePatchBlock(item.raw, item.format, true);
+  });
+  refreshAll();
+}
+
+// ============================================================================
+// 8. REAL-TIME PARAMETER INSPECTOR & LCD CONTROLLER
+// ============================================================================
+function updateScenePartPatch(part, val) {
+  const p = state[state.activePane], idx = parseInt(val, 10);
+  if (!isSceneBank(p.bank) || isNaN(idx)) return;
+  pushUndoState('Scene Part Link');
+  const sc = p.data.scenes[p.selectedIdx];
+  if (part === 'A') sc.raw[0x034] = sc.partAPatchIdx = idx;
+  else sc.raw[0x088] = sc.partBPatchIdx = idx;
+  sc.modified = true;
+  refreshAll();
+}
+
+function updateInspector() {
+  const k = state.activePane, p = state[k];
+  if (!p.data) return;
+  const scMode = isSceneBank(p.bank), inp = $('lcdNameInput');$('lcdPaneInfo').textContent = `PANE: [${k}] | SEL: ${p.selectedList.length}`;
+
+  if (scMode) {
+    const sc = p.data.scenes[p.selectedIdx], pA = getPatchCode(sc.partAPatchIdx), pB = getPatchCode(sc.partBPatchIdx);
+    $('lcdSlotInfo').textContent = `${getSceneCode(p.selectedIdx)} (#${p.selectedIdx + 1})`;
+    if (document.activeElement !== inp) inp.value = sc.name.trimEnd();
+    $('lcdExtraLeft').textContent = `TEMPO: ${sc.tempo} BPM`;
+    $('lcdExtraRight').textContent = `BI-TIMBRAL SCENE`;
+    const opts = sel => p.data.patches.map((pt, i) => `<option value="${i}" ${i===sel?'selected':''}>${getPatchCode(i)}: ${esc(pt.name.trim()||'(Empty)')}</option>`).join('');
+    $('tonesContainer').innerHTML = ['A','B'].map((pt, i) => {
+      const pIdx = i===0 ? sc.partAPatchIdx : sc.partBPatchIdx, lvl = i===0 ? sc.partALevel : sc.partBLevel;
+      return `<div class="t-card act" style="grid-column:span 2;border-top-color:var(--${i===0?'blu':'amb'})">
+        <div class="row" style="justify-content:space-between;color:#fff;font-weight:700"><span>PART ${pt}</span><span>SLOT: ${getPatchCode(pIdx)}</span></div>
+        <select class="sc-sel" onchange="updateScenePartPatch('${pt}',this.value)">${opts(pIdx)}</select>
+        <div class="p-row"><span>Part ${pt} Level</span><span class="p-val">${lvl}</span></div>
+        <div class="p-row"><span>Binary Offset (${i===0?'0x034':'0x088'})</span><span class="p-val">Patch #${pIdx}</span></div>
+      </div>`;
+    }).join('');
+    $('envDetails').textContent = `Scene Routing ➔ Part A: ${pA} | Part B: ${pB}`;
+  } else {
+    const pat = p.data.patches[p.selectedIdx];
+    const actStr = ['A','B','C','D'].map((l, i) => pat.tones[i].active ? l : '-').join('');
+    $('lcdSlotInfo').textContent = `PATCH ${getPatchCode(p.selectedIdx)} (#${p.selectedIdx + 1})`;
+    if (document.activeElement !== inp) inp.value = pat.name.trimEnd();
+    $('lcdExtraLeft').textContent = `TAG: ${pat.category} | [${actStr}]`;
+    $('lcdExtraRight').textContent = `LVL: ${pat.patchLevel} | ${pat.format}`;
+    $('tonesContainer').innerHTML = pat.tones.map((t, i) => `<div class="t-card ${t.active?'act':''}">
+      <div class="row" style="justify-content:space-between;color:#fff;font-weight:700"><span>TONE ${'ABCD'[i]}</span><span>${t.active?'ON':'OFF'}</span></div>
+      <div class="w-bdg" title="${esc(t.waveName)}">${esc(t.waveName)}</div>
+      <div class="p-row"><span>Lvl / Pan</span><span class="p-val">${t.level} / ${t.pan}</span></div>
+      <div class="p-row"><span>TVF (${t.tvfMode})</span><span class="p-val">${t.cutoff} / R:${t.resonance}</span></div>
+      <div class="p-row"><span>Pitch / LFO1</span><span class="p-val">${t.coarse>0?'+'+t.coarse:t.coarse}st | ${t.lfo1Shape}:${t.lfo1Rate}</span></div>
+    </div>`).join('');
+    const used = [];
+    p.data.scenes.forEach((sc, i) => {
+      if (sc.partAPatchIdx === p.selectedIdx || sc.partBPatchIdx === p.selectedIdx) {
+        used.push(`${getSceneCode(i)} (${sc.name.trim()})`);
+      }
+    });
+    $('envDetails').textContent = `Referenced by Scenes (${used.length}): ${used.join(', ') || 'None (Safe to overwrite)'}`;
+  }
+}
+
+// ============================================================================
+// 9. UI CONTROLS, TABS & KEYBOARD SHORTCUTS
+// ============================================================================
+function setActivePane(k) {
+  state.activePane = k;
+  $('paneL').classList.toggle('act', k === 'L');$('paneR').classList.toggle('act', k === 'R');
+  refreshAll();
+}
+
+function setDragMode(m) {
+  state.dragMode = m;
+  $('modeSwapBtn').classList.toggle('active', m === 'swap');$('modeCopyBtn').classList.toggle('active', m === 'copy');
+}
+
+function setViewMode(v) {
+  state.viewMode = v;
+  $('viewGridBtn').classList.toggle('active', v === 'grid');$('viewListBtn').classList.toggle('active', v === 'list');
+  refreshAll();
+}
+
+function switchBankTab(k, bVal, preserveSel = false) {
+  const p = state[k];
+  $(`tabs${k}`).querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.bank === String(bVal)));
+  p.bank = isSceneBank(bVal) ? bVal : parseInt(bVal, 10);
+  if (!preserveSel) {
+    const s = isSceneBank(p.bank) ? (p.bank === 'PRF1' ? 0 : 64) : p.bank * 64;
+    p.selectedIdx = s; p.selectedList = [s]; p.lastClickedIdx = s;
+  }
+  renderPane(k);
+}
+
+['L', 'R'].forEach(k => {
+  $(`fileInput${k}`).onchange = e => {
+    if (e.target.files.length) handleFileLoad(k, e.target.files[0]);
+    e.target.value = '';
+  };
+  $(`tabs${k}`).querySelectorAll('.tab').forEach(tab => {
+    tab.onclick = e => { e.stopPropagation(); switchBankTab(k, tab.dataset.bank); setActivePane(k); };
+    tab.ondragover = e => {
+      e.preventDefault();
+      tab.classList.add('drag-t');
+      if (String(state[k].bank) !== tab.dataset.bank) switchBankTab(k, tab.dataset.bank, true);
+    };
+    tab.ondragleave = () => tab.classList.remove('drag-t');
+    tab.ondrop = e => {
+      e.preventDefault();
+      tab.classList.remove('drag-t');
+      const b = tab.dataset.bank, sc = isSceneBank(b);
+      if (state.dragSource && state.dragSource.isScene === sc) {
+        executeBatchTransfer(state.dragSource.pane, state.dragSource.indices, k, sc ? (b==='PRF1'?0:64) : parseInt(b,10)*64, sc, state.dragMode === 'swap');
+        state.dragSource = null;
+      }
+    };
+  });
+});
+
+document.body.ondragover = e => e.preventDefault();
+document.body.ondrop = e => {
+  e.preventDefault();
+  if (e.dataTransfer.files?.length) handleFileLoad(state.activePane, e.dataTransfer.files[0]);
+};
+
+$('lcdNameInput').onfocus = () => state.lcdEditSnapshotSaved = false;
+$('lcdNameInput').oninput = e => {
+  const p = state[state.activePane];
+  if (!p.data) return;
+  if (!state.lcdEditSnapshotSaved) { pushUndoState('LCD Rename'); state.lcdEditSnapshotSaved = true; }
+  const n = e.target.value.padEnd(16, ' ').slice(0, 16);
+  if (isSceneBank(p.bank)) {
+    const sc = p.data.scenes[p.selectedIdx];
+    sc.name = n; sc.modified = true;
+    writeAscii(sc.raw, 0, 16, n);
+  } else {
+    const pat = p.data.patches[p.selectedIdx];
+    pat.name = n; pat.modified = true;
+    writeAscii(pat.raw, 0x010, 16, n);
+    pat.category = detectPatchCategory(n, pat.tones);
+  }
+  renderPane('L'); renderPane('R');
+};
+
+window.addEventListener('keydown', e => {
+  if (['INPUT','SELECT'].includes(e.target.tagName)) return;
+  const p = state[state.activePane], k = e.key.toLowerCase();
+  if (['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(e.key) && p.visibleIndices.length) {
+    e.preventDefault();
+    const step = state.viewMode === 'list' ? {ArrowRight:1,ArrowLeft:-1,ArrowDown:1,ArrowUp:-1}[e.key] : {ArrowRight:1,ArrowLeft:-1,ArrowDown:8,ArrowUp:-8}[e.key];
+    const cur = p.visibleIndices.indexOf(p.selectedIdx);
+    const nextPos = cur === -1 ? 0 : Math.min(p.visibleIndices.length - 1, Math.max(0, cur + step));
+    const nextIdx = p.visibleIndices[nextPos];
+    if (e.shiftKey && p.lastClickedIdx !== null) {
+      const a = Math.max(0, p.visibleIndices.indexOf(p.lastClickedIdx));
+      p.selectedList = p.visibleIndices.slice(Math.min(a, nextPos), Math.max(a, nextPos) + 1);
+      p.selectedIdx = nextIdx;
+    } else {
+      p.selectedIdx = nextIdx; p.selectedList = [nextIdx]; p.lastClickedIdx = nextIdx;
+    }
+    return refreshAll();
+  }
+  if (e.ctrlKey || e.metaKey) {
+    if (k === 'z') { e.preventDefault(); undo(); }
+    if (k === 'y') { e.preventDefault(); redo(); }
+    if (k === 'a') { e.preventDefault(); selectAllInBank(state.activePane); }
+    if (k === 'c') { e.preventDefault(); copySelectionToClipboard(false); }
+    if (k === 'x') { e.preventDefault(); copySelectionToClipboard(true); }
+    if (k === 'v') { e.preventDefault(); pasteClipboard(); }
+  } else if (e.key === 'Delete' || e.key === 'Backspace' || e.key === 'F8') {
+    e.preventDefault(); deleteSelectedSlots();
+  } else if (e.key === 'F2') {
+    e.preventDefault(); quickRenameSelected();
+  } else if (e.key === 'F5') {
+    e.preventDefault(); transferSelected(state.activePane, state.activePane === 'L' ? 'R' : 'L', false);
+  } else if (e.key === 'F6') {
+    e.preventDefault(); transferSelected('L', 'R', true);
+  }
+});
+
+// Initialize both panes with ready-to-use 256-slot SVD5 templates on startup
+initBlankSvdInPane('L', true);
+linkRightToLeft();
+setActivePane('L');
+</script>
+</body>
+</html>
