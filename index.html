@@ -183,7 +183,7 @@ footer {
 <header>
   <div class="brand">
     <h1>ROLAND JD-08 COMMANDER & LIBRARIAN</h1>
-    <span>// SVD / BIN / SDZ / SYX Total Converter & Scene Manager</span>
+    <span>// SVD / BIN / SYX Total Converter & Scene Manager</span>
   </div>
   <div class="row">
     <span class="status-pill" id="globalStatus">Ready — Blank 256-Slot SVD5 Template Active</span>
@@ -225,7 +225,7 @@ footer {
         <span id="clipStatus" style="color:var(--glow)">Clipboard: empty</span>
       </div>
       <div id="envDetails" style="font-family:monospace;color:var(--blu);font-size:.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-        Ready. Load .SVD, .BIN, .SDZ, or .SYX into either pane.
+        Ready. Load .SVD, .BIN, or .SYX into either pane.
       </div>
     </div>
     <div class="s-grid">
@@ -272,9 +272,9 @@ function buildWorkspaceDOM() {
           </select>
           ${k==='R' ? `<button id="linkSameFileBtn" onclick="linkRightToLeft()" title="Link Right Pane to Left Pane memory">🔗 Share L</button>` : ''}
           <button onclick="initBlankSvdInPane('${k}')" title="Create fresh 256-Patch / 128-Scene SVD5 in this pane">📄 New</button>
-          <label class="fbtn pri" title="Load .SVD backup or import .BIN / .SDZ / .SYX banks">
-            📂 Load (.svd/.bin/.sdz/.syx)
-            <input type="file" id="fileInput${k}" accept=".svd,.bin,.sdz,.syx">
+          <label class="fbtn pri" title="Load .SVD backup or import .BIN / .SYX banks">
+            📂 Load (.svd/.bin/.syx)
+            <input type="file" id="fileInput${k}" accept=".svd,.bin,.syx">
           </label>
           <button id="saveBtn${k}" class="pri" onclick="saveSvd('${k}')" title="Download full JD08Backup.svd">💾 Save .SVD</button>
         </div>
@@ -600,7 +600,7 @@ function parseBIN(uint8) {
   return patches;
 }
 
-// Convert ZEN-Core (.sdz) -> Array of 2048B Patch Objects
+/*// Convert ZEN-Core (.sdz) -> Array of 2048B Patch Objects
 function parseSDZ(uint8) {
   if (decodeAscii(uint8, 0, 4) !== 'VEXP') throw new Error('Invalid .SDZ file (expected VEXP header).');
   const compressed = uint8.slice(0x70);
@@ -648,7 +648,7 @@ function parseSDZ(uint8) {
   if (!patches.length) throw new Error('No compatible JD-800 patches found inside .SDZ container.');
   return patches;
 }
-
+*/
 // Convert Classic JD-800 384-byte SysEx slice -> 2048B JD-08 Patch
 function convertJD800Syx384ToJD08(syx384) {
   const data = createInitPatchRaw(decodeAscii(syx384, 0, 16));
@@ -836,7 +836,7 @@ async function handleFileLoad(k, file) {
       setActivePane(k);
       setStatus(`Translated & imported ${newSel.length} patches from ${file.name} into Pane ${k} (${getPatchCode(baseIdx)}..${getPatchCode(newSel[newSel.length-1])}).`);
     } else {
-      throw new Error('Unsupported file extension. Use .svd, .bin, .sdz, or .syx');
+      throw new Error('Unsupported file extension. Use .svd, .bin, or .syx');
     }
   } catch (err) {
     alert(`File Import Error: ${err.message}`);
