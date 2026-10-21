@@ -1,1412 +1,778 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roland JD-08 Total Patch Commander & Librarian Ultimate</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-<style>
-:root {
-  --bg: #0e1013;
-  --pan: #17191e;
-  --card: #20242b;
-  --lcd: #0f1c14;
-  --glow: #39ff5a;
-  --org: #ff5500;
-  --org-hover: #ff772b;
-  --amb: #ffaa00;
-  --blu: #00a8ff;
-  --red: #ff3b3b;
-  --txt: #e4e6eb;
-  --mut: #8b929e;
-  --brd: #2c303a;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-body {
-  background: var(--bg); color: var(--txt);
-  font-family: 'Segoe UI', Roboto, Consolas, monospace;
-  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
-}
-header {
-  background: linear-gradient(180deg, #23262d, #14161a);
-  border-bottom: 2px solid var(--org);
-  padding: 6px 12px; display: flex; align-items: center;
-  justify-content: space-between; gap: 8px; flex-wrap: wrap;
-}
-.brand { display: flex; align-items: baseline; gap: 10px; }
-.brand h1 { font-size: 0.98rem; letter-spacing: 1.2px; color: #fff; font-weight: 800; }
-.brand span { color: var(--org); font-size: 0.72rem; font-family: Consolas, monospace; }
-.status-pill {
-  background: #101216; border: 1px solid var(--brd); color: var(--glow);
-  padding: 3px 8px; border-radius: 4px; font-family: Consolas, monospace; font-size: 0.7rem;
-}
-.row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 0.72rem; }
-.mode-sw { display: flex; background: #111; border: 1px solid var(--brd); border-radius: 4px; overflow: hidden; }
-.mode-btn {
-  padding: 4px 8px; border: none; background: transparent;
-  color: var(--mut); font-size: 0.7rem; font-weight: 600; cursor: pointer;
-}
-.mode-btn.active { background: var(--org); color: #fff; }
-.chk {
-  display: flex; align-items: center; gap: 5px; cursor: pointer;
-  background: #16181d; padding: 4px 8px; border: 1px solid var(--brd); border-radius: 4px;
-}
-button, .fbtn, select.flt-sel {
-  background: var(--card); color: var(--txt); border: 1px solid var(--brd);
-  padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.71rem;
-  font-weight: 600; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
-  font-family: inherit; transition: 0.12s;
-}
-button:hover:not(:disabled), .fbtn:hover, select.flt-sel:hover { border-color: var(--org); color: #fff; }
-button.pri, .fbtn.pri { background: var(--org); border-color: var(--org); color: #000; font-weight: 700; }
-button.pri:hover:not(:disabled), .fbtn.pri:hover { background: var(--org-hover); color: #000; }
-button.dng:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
-button:disabled { opacity: 0.35; cursor: not-allowed; }
-input[type="file"] { display: none; }
-
-.work { display: grid; grid-template-columns: 1fr 98px 1fr; flex: 1; overflow: hidden; border-bottom: 1px solid var(--brd); }
-.pane { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
-.pane.act { box-shadow: inset 0 0 0 1px rgba(255, 85, 0, 0.55); }
-.p-hdr {
-  background: var(--pan); padding: 5px 9px; border-bottom: 1px solid var(--brd);
-  display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;
-}
-.p-tit { font-family: Consolas, monospace; font-size: 0.75rem; font-weight: 700; color: var(--amb); display: flex; align-items: center; gap: 6px; }
-.bdg { background: #2b2f3a; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 0.65rem; }
-.bdg.shd { background: #143546; color: var(--blu); border: 1px solid var(--blu); }
-.sbox {
-  background: #0b0c0e; border: 1px solid var(--brd); color: var(--glow);
-  padding: 3px 7px; border-radius: 4px; font-family: Consolas, monospace; font-size: 0.71rem; width: 110px;
-}
-.b-bar {
-  display: flex; justify-content: space-between; align-items: flex-end;
-  background: #131519; border-bottom: 1px solid var(--brd); padding: 4px 7px 0; gap: 5px; flex-wrap: wrap;
-}
-.tabs { display: flex; gap: 3px; overflow-x: auto; }
-.tab {
-  padding: 4px 8px; background: #1b1d23; border: 1px solid var(--brd);
-  border-bottom: none; border-radius: 4px 4px 0 0; cursor: pointer;
-  font-weight: 700; color: var(--mut); font-size: 0.68rem;
-}
-.tab.active { background: var(--bg); color: var(--org); border-top: 2px solid var(--org); }
-.tab.sc-tab.active { color: var(--blu); border-top-color: var(--blu); }
-.tab.drag-t { background: #1c3623 !important; color: var(--glow) !important; }
-
-.g-wrap { flex: 1; overflow-y: auto; padding: 6px; }
-/* GRID VIEW */
-.grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-.cell {
-  background: var(--pan); border: 1px solid var(--brd); border-radius: 4px;
-  padding: 4px 5px; cursor: grab; display: flex; flex-direction: column;
-  justify-content: space-between; min-height: 58px; position: relative;
-}
-.cell:hover { border-color: #555b69; background: var(--card); }
-.cell.emp { opacity: 0.42; border-style: dotted; }
-.cell.sel { border-color: var(--org); background: #2c201b; opacity: 1; }
-.cell.pri-sel { border-color: #ff8800; box-shadow: 0 0 0 1px #ff8800; }
-.cell.sc.sel { border-color: var(--blu); background: #172734; }
-.cell.d-over { border: 1px dashed var(--glow) !important; background: #182b1d !important; }
-.cell.mod .cid::after { content: "*"; color: var(--org); font-weight: 900; margin-left: 2px; }
-
-/* LIST VIEW (Commander Style) */
-.list-tbl { display: flex; flex-direction: column; border: 1px solid var(--brd); border-radius: 4px; overflow: hidden; }
-.list-hdr, .list-row {
-  display: grid; grid-template-columns: 64px 1fr 70px 75px 75px;
-  padding: 4px 8px; font-family: Consolas, monospace; font-size: 0.73rem; align-items: center;
-}
-.list-hdr { background: #181a1f; color: var(--mut); font-size: 0.66rem; font-weight: 700; border-bottom: 1px solid var(--brd); }
-.list-row { border-bottom: 1px solid #22262e; cursor: grab; background: #1c2026; }
-.list-row:nth-child(even) { background: #171a20; }
-.list-row:hover { background: #282d37; }
-.list-row.emp { opacity: 0.48; }
-.list-row.sel { background: #32241e; color: #fff; border-left: 3px solid var(--org); }
-.list-row.pri-sel { outline: 1px solid var(--amb); }
-.list-row.d-over { border-top: 2px solid var(--glow); background: #182b1d !important; }
-
-.s-ord {
-  position: absolute; top: -5px; right: -5px; background: var(--org); color: #000;
-  font-size: 0.56rem; font-family: monospace; font-weight: 800; padding: 1px 4px;
-  border-radius: 8px; pointer-events: none;
-}
-.cid { font-size: 0.62rem; font-family: monospace; color: var(--amb); display: flex; justify-content: space-between; align-items: center; }
-.sc .cid { color: var(--blu); }
-.dots { display: flex; gap: 2px; }
-.dot { width: 5px; height: 5px; border-radius: 50%; background: #333; }
-.dot.on { background: var(--glow); box-shadow: 0 0 3px var(--glow); }
-.cname { font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: 700; color: #fff; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
-.cmeta { display: flex; justify-content: space-between; font-size: 0.56rem; font-family: monospace; color: var(--mut); align-items: center; }
-.ctag { padding: 0 3px; border-radius: 2px; background: #14161a; font-weight: 700; }
-.ctag.BASS { color: #ff7676; } .ctag.PAD { color: #76d4ff; } .ctag.LEAD { color: #ffd476; }
-.ctag.KEYS { color: #a8ff76; } .ctag.BELL { color: #e29eff; } .ctag.SYNTH { color: #ffb86c; } .ctag.INIT { color: #666; }
-
-.bridge {
-  background: #131519; border-left: 1px solid var(--brd); border-right: 1px solid var(--brd);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5px; gap: 4px;
-}
-.b-lbl { font-size: 0.58rem; font-family: monospace; color: var(--mut); text-transform: uppercase; text-align: center; }
-.bbtn { width: 100%; justify-content: center; padding: 4px 2px; font-size: 0.65rem; flex-direction: column; gap: 1px; }
-.bbtn small { font-size: 0.53rem; color: var(--mut); }
-
-footer {
-  height: 188px; background: var(--pan);
-  display: grid; grid-template-columns: 285px 1fr 330px; gap: 9px; padding: 8px 12px; flex-shrink: 0;
-}
-.lcd {
-  background: var(--lcd); border: 3px solid #2b3036; border-radius: 6px;
-  padding: 7px 9px; font-family: 'Courier New', monospace; color: var(--glow);
-  display: flex; flex-direction: column; justify-content: space-between;
-}
-.lcd-in {
-  background: rgba(0, 0, 0, 0.45); border: 1px solid #285a32; color: var(--glow);
-  font-family: 'Courier New', monospace; font-size: 1.08rem; font-weight: 700; padding: 3px 5px; width: 100%;
-}
-.insp-m, .insp-r { background: var(--bg); border: 1px solid var(--brd); border-radius: 6px; padding: 6px 8px; overflow-y: auto; }
-.t-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; height: 100%; }
-.t-card {
-  background: var(--pan); border: 1px solid var(--brd); border-radius: 4px;
-  padding: 5px; font-size: 0.64rem; opacity: 0.35; display: flex; flex-direction: column; justify-content: space-between;
-}
-.t-card.act { opacity: 1; border-top: 2px solid var(--glow); }
-.w-bdg, .sc-sel {
-  background: #111; color: var(--glow); padding: 2px 4px; border-radius: 3px;
-  font-family: monospace; font-size: 0.63rem; border: 1px solid var(--brd);
-  width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.p-row { display: flex; justify-content: space-between; color: var(--mut); font-size: 0.61rem; }
-.p-val { color: var(--txt); font-family: monospace; }
-.s-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; font-family: monospace; font-size: 0.61rem; color: var(--mut); }
-.s-grid b { color: var(--amb); }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Roland JD-08 Commander & Librarian</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230f141e'/%3E%3Crect x='3' y='3' width='26' height='26' rx='4' fill='%23161b26' stroke='%23ffaa00' stroke-width='1.5'/%3E%3Cpath d='M8 12h16M8 16h16M8 20h10' stroke='%2300e5c8' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='23' cy='20' r='2' fill='%23ffaa00'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css?v=20261021_RELEASE">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 </head>
-<body>
+<body class="tier-basic">
 
-<header>
-  <div class="brand">
-    <h1>ROLAND JD-08 COMMANDER & LIBRARIAN</h1>
-    <span>// SVD / BIN / SYX Total Converter & Scene Manager</span>
-  </div>
-  <div class="row">
-    <span class="status-pill" id="globalStatus">Ready — Blank 256-Slot SVD5 Template Active</span>
-    <button id="undoBtn" disabled onclick="undo()" title="Undo (Ctrl+Z)">↩ Undo (0)</button>
-    <button id="redoBtn" disabled onclick="redo()" title="Redo (Ctrl+Y)">↪ Redo (0)</button>
-    <div class="mode-sw" title="Drag & Drop Behavior">
-      <button class="mode-btn active" id="modeSwapBtn" onclick="setDragMode('swap')">⇄ Swap</button>
-      <button class="mode-btn" id="modeCopyBtn" onclick="setDragMode('copy')">➔ Copy</button>
+  <!-- TOP HEADER & CONTROLS -->
+  <header>
+    <div class="brand">
+      <h1>ROLAND JD-08 COMMANDER</h1>
     </div>
-    <div class="mode-sw" title="Switch Grid or Table List View">
-      <button class="mode-btn active" id="viewGridBtn" onclick="setViewMode('grid')">▦ Grid</button>
-      <button class="mode-btn" id="viewListBtn" onclick="setViewMode('list')">☰ List</button>
-    </div>
-    <label class="chk" title="Automatically update Scene Part A/B patch links when moving/sorting patches">
-      <input type="checkbox" id="autoRelinkCheckbox" checked> 🔗 Auto-Relink Scenes
-    </label>
-  </div>
-</header>
-
-<div class="work" id="workspace"></div>
-
-<footer>
-  <div class="lcd">
-    <div class="row" style="justify-content:space-between;font-size:.68rem">
-      <span id="lcdPaneInfo">PANE: [L]</span>
-      <span id="lcdSlotInfo">SLOT: A11</span>
-    </div>
-    <input type="text" id="lcdNameInput" class="lcd-in" maxlength="16" value="INIT PATCH">
-    <div class="row" style="justify-content:space-between;font-size:.65rem;color:#8aff9d">
-      <span id="lcdExtraLeft">CAT: INIT</span>
-      <span id="lcdExtraRight">LEVEL: 80</span>
-    </div>
-  </div>
-  <div class="insp-m"><div class="t-grid" id="tonesContainer"></div></div>
-  <div class="insp-r" style="display:flex;flex-direction:column;justify-content:space-between">
-    <div>
-      <div class="row" style="justify-content:space-between;color:var(--amb);font-weight:700;margin-bottom:3px">
-        <span>SCENE LINKS & CLIPBOARD</span>
-        <span id="clipStatus" style="color:var(--glow)">Clipboard: empty</span>
+    <div class="hdr-controls">
+      <span class="status-pill" id="globalStatus" title="System Status"><span class="status-led">●</span> Ready</span>
+      <div class="btn-group" title="Undo / Redo History">
+        <button id="undoBtn" disabled onclick="undo()" title="Undo (Ctrl+Z)">↩ Undo (0)</button>
+        <button id="redoBtn" disabled onclick="redo()" title="Redo (Ctrl+Y)">↪ Redo (0)</button>
       </div>
-      <div id="envDetails" style="font-family:monospace;color:var(--blu);font-size:.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-        Ready. Load .SVD, .BIN, or .SYX into either pane.
+      <div class="mode-sw" title="Drag & Drop Mode: Swap slots or Copy source to target">
+        <button class="mode-btn active" id="modeSwapBtn" onclick="setDragMode('swap')">⇄ Swap</button>
+        <button class="mode-btn" id="modeCopyBtn" onclick="setDragMode('copy')">➔ Copy</button>
       </div>
+      <div class="mode-sw" title="Switch Display View">
+        <button class="mode-btn active" id="viewGridBtn" onclick="setViewMode('grid')">▦ Grid</button>
+        <button class="mode-btn" id="viewListBtn" onclick="setViewMode('list')">☰ List</button>
+      </div>
+      <label class="chk-box" title="Automatically update Scene Part A/B patch links when moving or sorting patches">
+        <input type="checkbox" id="autoRelinkCheckbox" checked> 🔗 Auto-Relink Scenes
+      </label>
+
+      <!-- BASIC / ADVANCED UI TIER SLIDER -->
+      <div class="tier-pill" title="Switch UI View: Basic clears clutter; Advanced exposes full power utilities">
+        <button class="tier-btn active" id="tierBasicBtn" onclick="setUiTier('basic')">Basic</button>
+        <button class="tier-btn" id="tierAdvBtn" onclick="setUiTier('advanced')">Advanced</button>
+      </div>
+
+      <!-- GUIDE & SYSTEM SETTINGS -->
+      <button class="settings-btn" id="tutorialBtn" onclick="openTutorialModal(0)" title="User Guide, Architecture Overview & Shortcuts">
+        📖 Guide
+      </button>
+      <button class="settings-btn" id="settingsBtn" onclick="openSettingsModal()" title="System Settings, Workflow & Theme Colors">
+        ⚙️ Settings
+      </button>
     </div>
-    <div class="s-grid">
-      <div><b>Arrows / Click</b>: Select</div><div><b>Shift/Ctrl+Click</b>: Multi</div>
-      <div><b>Del / F8</b>: Init Slot(s)</div><div><b>Ctrl+C / X / V</b>: Clipboard</div>
-      <div><b>F5 / F6</b>: Copy / Swap</div><div><b>F2 / DblClick</b>: Rename</div>
-      <div><b>Ctrl+Z / Y</b>: Undo/Redo</div><div><b>Drop on Tab</b>: Move Bank</div>
-    </div>
-  </div>
-</footer>
+  </header>
 
-<script>
-// ============================================================================
-// 1. CONSTANTS, WAVEFORMS & BINARY HEADERS
-// ============================================================================
-const PATCH_SIZE_JD08 = 2048;
-const SCENE_SIZE_JD08 = 11524;
-const JD08_PATCH_HEADER = new Uint8Array([0x00,0x00,0x00,0x00, 0x01,0x01,0x05,0x00, 0x0F,0x00,0x00,0x00, 0x00,0x00,0x00,0x00]);
+  <!-- DUAL PANE WORKSPACE -->
+  <div class="work" id="workspace"></div>
 
-const WAVES = "Syn Saw 1|Syn Saw 2|FAT Saw|FAT Square|Syn Pulse1|Syn Pulse2|Syn Pulse3|Syn Pulse4|Syn Pulse5|Pulse Mod|Triangle|Sine|Soft Saw|Synced Saw|HPF Saw|Digital 1|Digital 2|Digital 3|Digital 4|Digital 5|Digital 6|Digital 7|Glass Wave|Bell Wave|Organ 1|Organ 2|E.Organ 1|E.Organ 2|Vocal 1|Vocal 2|Choir|Voice Pad|Piano|E.Piano 1|E.Piano 2|Clav|Harpsichord|Celesta|Marimba|Vibe|Xylophone|Steel Drum|Kalimba|Gamelan 1|Gamelan 2|Bell 1|Bell 2|Chime|Fingered B|Picked Bass|Fretless|Slap Bass|Synth Bass|Acoustic G|Nylong Gt|E.Guitar 1|E.Guitar 2|Dist Gt|Muted Gt|Gt Harm|Sitar|Pluck 1|Pluck 2|Harp|Strings|Pizzicato|Trumpet|Trombone|French Hrn|Brass|Alto Sax|Tenor Sax|Baritone S|Flute|Pan Flute|Shakuhachi|Blow Pipe|Bottle|Lead Wave|White Noise|Pink Noise|Pitch Wind|Vox Noise|Breath|Metal Hit|Anvil|Wind Agogo|Feedback|Thump|Sparkle|Pole lp|Glass Hit|Cutters|Wood Crack|Scratch|Drop|E.Piano Atk|Piano Atk|Shamisen|Koto|Tuba|Log Drum|Timbale|Cabasa|Snare|Kick|Hi-Hat|Tom"
-  .split("|").map((n, i) => `${String(i + 1).padStart(3, '0')}: ${n}`);
-const LFO_SHAPES = ["TRI", "SAW", "SQR", "S&H", "RND"];
-const TVF_MODES  = ["OFF", "LPF", "BPF", "HPF"];
-const CATEGORIES = ["ALL", "BASS", "PAD", "LEAD", "KEYS", "BELL", "SYNTH", "INIT"];
+  <!-- FOOTER CONSOLE: ABLETON-STYLE COLLAPSIBLE DOCK & PRESET OVERVIEW -->
+  <footer id="footerConsole">
+    <!-- Collapsed Slim Bar (Ableton style) -->
+    <div class="footer-collapsed-bar" id="footerCollapsedBar" onclick="toggleFooterCollapse()"></div>
 
-const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const readU32LE = (b, o) => ((b[o]) | (b[o+1]<<8) | (b[o+2]<<16) | (b[o+3]<<24)) >>> 0;
-
-function setStatus(msg) { $('globalStatus').textContent = msg; }
-
-// ============================================================================
-// 2. WORKSPACE DOM GENERATOR
-// ============================================================================
-function buildWorkspaceDOM() {
-  const paneHtml = (k, title, defBank) => `
-    <section class="pane ${k==='L'?'act':''}" id="pane${k}" onclick="setActivePane('${k}')">
-      <div class="p-hdr">
-        <div class="p-tit"><span>[${title}]</span><span class="bdg" id="badge${k}">Blank Template</span></div>
-        <div class="row">
-          <input type="text" id="search${k}" class="sbox" placeholder="Search..." oninput="renderPane('${k}')">
-          <select id="catFilter${k}" class="flt-sel" onchange="renderPane('${k}')" title="Filter by Auto-Detected Category">
-            ${CATEGORIES.map(c => `<option value="${c}">${c === 'ALL' ? '🏷️ All Tags' : c}</option>`).join('')}
-          </select>
-          ${k==='R' ? `<button id="linkSameFileBtn" onclick="linkRightToLeft()" title="Link Right Pane to Left Pane memory">🔗 Share L</button>` : ''}
-          <button onclick="initBlankSvdInPane('${k}')" title="Create fresh 256-Patch / 128-Scene SVD5 in this pane">📄 New</button>
-          <label class="fbtn pri" title="Load .SVD backup or import .BIN / .SYX banks">
-            📂 Load (.svd/.bin/.syx)
-            <input type="file" id="fileInput${k}" accept=".svd,.bin,.syx">
-          </label>
-          <button id="saveBtn${k}" class="pri" onclick="saveSvd('${k}')" title="Download full JD08Backup.svd">💾 Save .SVD</button>
+    <!-- Expanded Preset & Track Overview -->
+    <div class="footer-expanded" id="footerExpanded">
+      <div class="lcd">
+        <div class="p-row" style="font-size:0.68rem">
+          <span id="lcdPaneInfo">PANE: [L]</span>
+          <span id="lcdSlotInfo">SLOT: A11</span>
+        </div>
+        <input type="text" id="lcdNameInput" class="lcd-in" maxlength="16" value="INIT PATCH">
+        <div class="p-row" style="font-size:0.67rem;color:var(--el-cyan);align-items:center">
+          <span id="lcdExtraLeft">CAT: INIT</span>
+          <span id="lcdExtraRight">LEVEL: 80</span>
+        </div>
+        <div class="ob-bar" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:4px">
+          <div class="ob-status-pill" onclick="handleOverbridgePillClick()" title="Click to Connect Roland JD-08 via USB" style="flex-shrink:0">
+            <span class="ob-dot"></span>
+            <span class="ob-lbl">Connect</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
+            <button class="ob-btn ob-monitor-btn" onclick="toggleUsbAudioMonitor()" title="Stream JD-08 USB Audio directly to PC speakers / laptop headphones">🔈 PC SPK: OFF</button>
+            <select class="ob-ch-select" id="obChannelSelect" onchange="handleChannelSelectChange(this.value)" title="MIDI Channel Selection">
+              <option value="both">CH: ALL (1-3)</option>
+              <option value="2">CH 2 (Part A)</option>
+              <option value="3">CH 3 (Part B)</option>
+              <option value="1">CH 1</option>
+              <option value="4">CH 4</option>
+              <option value="5">CH 5</option>
+              <option value="6">CH 6</option>
+              <option value="7">CH 7</option>
+              <option value="8">CH 8</option>
+              <option value="9">CH 9</option>
+              <option value="10">CH 10</option>
+              <option value="11">CH 11</option>
+              <option value="12">CH 12</option>
+              <option value="13">CH 13</option>
+              <option value="14">CH 14</option>
+              <option value="15">CH 15</option>
+              <option value="16">CH 16</option>
+            </select>
+          </div>
         </div>
       </div>
-      <div class="b-bar">
-        <div class="tabs" id="tabs${k}">
-          ${[0,1,2,3,'PRF1','PRF2'].map(b => {
-            const lbl = b==='PRF1'?'SCENES 1-8':b==='PRF2'?'SCENES 9-16':`BANK ${'ABCD'[b]}`;
-            return `<div class="tab ${String(b).startsWith('PRF')?'sc-tab':''} ${b===defBank?'active':''}" data-bank="${b}">${lbl}</div>`;
-          }).join('')}
+      <div class="insp-m">
+        <div class="t-grid" id="tonesContainer"></div>
+      </div>
+      <div class="insp-r" style="display:flex;flex-direction:column;justify-content:space-between">
+        <div>
+          <div class="p-row" style="color:var(--el-amber);font-weight:800;margin-bottom:3px">
+            <span>SCENE LINKS & CLIPBOARD</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span id="clipStatus" style="color:var(--el-cyan)">Clipboard: empty</span>
+              <button class="footer-collapse-btn" onclick="toggleFooterCollapse()" title="Collapse dock to save vertical space (Shift+Tab)">▼ Hide</button>
+            </div>
+          </div>
+          <div id="envDetails" style="font-family:Consolas,monospace;color:var(--el-blue);font-size:0.66rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            Ready. Load .SVD, .BIN, or .SYX into either pane.
+          </div>
         </div>
-        <div class="row" style="padding-bottom:3px">
-          <button onclick="selectAllInBank('${k}')" title="Select all visible slots (Ctrl+A)">☑ All</button>
-          <button onclick="selectNoneInBank('${k}')" title="Deselect all">☐ None</button>
-          <button onclick="compactBank('${k}')" title="Move non-empty patches to the beginning of the bank">🧹 Compact</button>
-          <button onclick="sortBankAlpha('${k}')" title="Sort bank alphabetically A-Z">🔤 A-Z</button>
-          <button onclick="sortBankByCategory('${k}')" title="Group patches by category tag">🏷️ By Tag</button>
+        <div class="s-grid">
+          <div><b>Arrows / Click</b>: Select</div>
+          <div><b>Shift/Ctrl+Click</b>: Multi</div>
+          <div><b>Del / F8</b>: Init Slot(s)</div>
+          <div><b>Ctrl+C / X / V</b>: Clipboard</div>
+          <div><b>F5 / F6</b>: Copy / Swap</div>
+          <div><b>DblClick / Space</b>: Workstation</div>
+          <div><b>Ctrl+Z / Y</b>: Undo/Redo</div>
+          <div><b>Shift+Tab</b>: Fold Dock</div>
+        </div>
+        <div class="footer-credit">
+          <span class="credit-ver">V.3.0.0</span>
+          <span>made by <b class="credit-author">ShacchiOrca</b> using <span class="credit-vibe">vibecoding</span></span>
         </div>
       </div>
-      <div class="g-wrap" id="wrap${k}"></div>
-    </section>`;
-
-  $('workspace').innerHTML = paneHtml('L', 'LEFT PANE', 0) + `
-    <div class="bridge">
-      <span class="b-lbl" id="selCountLabel">Sel: 1</span>
-      <button class="bbtn pri" id="copyLtoRBtn" onclick="transferSelected('L','R',false)" title="Copy selected from Left to Right (F5)">
-        <span>Copy ➔</span><small>[F5] L->R</small>
-      </button>
-      <button class="bbtn" id="copyRtoLBtn" onclick="transferSelected('R','L',false)" title="Copy selected from Right to Left">
-        <span>⬅ Copy</span><small>R->L</small>
-      </button>
-      <button class="bbtn" id="bankCopyBtn" onclick="copyEntireActiveBank()" title="Copy entire 64-slot bank from active pane to target pane">
-        <span>Bank ➔➔</span><small>64 Slots</small>
-      </button>
-      <button class="bbtn" id="swapLRBtn" onclick="transferSelected('L','R',true)" title="Swap selected slots between Left and Right (F6)">
-        <span>⇄ Swap</span><small>[F6] L&lt;-&gt;R</small>
-      </button>
-      <hr style="width:100%;border:0;border-top:1px solid var(--brd)">
-      <button class="bbtn" id="copyClipBtn" onclick="copySelectionToClipboard(false)"><span>📋 Copy</span><small>[Ctrl+C]</small></button>
-      <button class="bbtn" id="cutClipBtn" onclick="copySelectionToClipboard(true)"><span>✂️ Cut</span><small>[Ctrl+X]</small></button>
-      <button class="bbtn" id="pasteClipBtn" disabled onclick="pasteClipboard()"><span>📥 Paste</span><small>[Ctrl+V]</small></button>
-      <hr style="width:100%;border:0;border-top:1px solid var(--brd)">
-      <button class="bbtn" id="renameBtn" onclick="quickRenameSelected()" title="Rename active slot (F2)"><span>✏️ Rename</span><small>[F2]</small></button>
-      <button class="bbtn" id="prefixBtn" onclick="batchRenamePrefix()" title="Add prefix to all selected items"><span>🏷️ Prefix</span><small>Batch</small></button>
-      <button class="bbtn dng" id="initSlotBtn" onclick="deleteSelectedSlots()" title="Initialize selected slots (Del / F8)"><span>🗑️ Init</span><small>[Del/F8]</small></button>
-    </div>` + paneHtml('R', 'RIGHT PANE', 1);
-}
-buildWorkspaceDOM();
-
-// ============================================================================
-// 3. STATE MANAGEMENT & UNDO / REDO STACK
-// ============================================================================
-const state = {
-  L: { data: null, bank: 0, selectedIdx: 0, selectedList: [0], lastClickedIdx: 0, fileName: 'Template_L.svd', visibleIndices: [] },
-  R: { data: null, bank: 1, selectedIdx: 64, selectedList: [64], lastClickedIdx: 64, fileName: 'Template_R.svd', isSharedWithL: false, visibleIndices: [] },
-  activePane: 'L',
-  dragMode: 'swap',
-  viewMode: 'grid', // 'grid' | 'list'
-  dragSource: null,
-  clipboard: { isScene: false, items: [] },
-  undoStack: [],
-  redoStack: [],
-  lcdEditSnapshotSaved: false
-};
-
-const isSceneBank = b => b === 'PRF1' || b === 'PRF2';
-const getPatchCode = i => (i < 0 || i > 255) ? '---' : `${'ABCD'[i >> 6]}${((i & 63) >> 3) + 1}${(i & 7) + 1}`;
-const getSceneCode = i => `S${String((i >> 3) + 1).padStart(2, '0')}-${(i & 7) + 1}`;
-
-function snapshotDoc(doc) {
-  return doc ? {
-    patches: doc.patches.map(p => ({ raw: new Uint8Array(p.raw), format: p.format, modified: p.modified })),
-    scenes: doc.scenes.map(s => ({ raw: new Uint8Array(s.raw), modified: s.modified }))
-  } : null;
-}
-
-function pushUndoState(label = 'Action') {
-  state.undoStack.push({
-    label,
-    L: snapshotDoc(state.L.data),
-    R: (!state.R.isSharedWithL) ? snapshotDoc(state.R.data) : null
-  });
-  if (state.undoStack.length > 40) state.undoStack.shift();
-  state.redoStack = [];
-  updateUndoButtons();
-}
-
-function restoreSnapshot(snap) {
-  if (snap.L && state.L.data) {
-    state.L.data.patches = snap.L.patches.map(p => parsePatchBlock(new Uint8Array(p.raw), p.format, p.modified));
-    state.L.data.scenes  = snap.L.scenes.map(s => parseSceneBlock(new Uint8Array(s.raw), s.modified));
-  }
-  if (snap.R && state.R.data && !state.R.isSharedWithL) {
-    state.R.data.patches = snap.R.patches.map(p => parsePatchBlock(new Uint8Array(p.raw), p.format, p.modified));
-    state.R.data.scenes  = snap.R.scenes.map(s => parseSceneBlock(new Uint8Array(s.raw), s.modified));
-  }
-  refreshAll();
-}
-
-function undo() {
-  if (!state.undoStack.length) return;
-  const snap = state.undoStack.pop();
-  state.redoStack.push({ label: snap.label, L: snapshotDoc(state.L.data), R: (!state.R.isSharedWithL) ? snapshotDoc(state.R.data) : null });
-  restoreSnapshot(snap);
-  setStatus(`Undid: ${snap.label}`);
-}
-
-function redo() {
-  if (!state.redoStack.length) return;
-  const snap = state.redoStack.pop();
-  state.undoStack.push({ label: snap.label, L: snapshotDoc(state.L.data), R: (!state.R.isSharedWithL) ? snapshotDoc(state.R.data) : null });
-  restoreSnapshot(snap);
-  setStatus(`Redid: ${snap.label}`);
-}
-
-function updateUndoButtons() {
-  $('undoBtn').disabled = !state.undoStack.length;
-  $('redoBtn').disabled = !state.redoStack.length;
-  $('undoBtn').textContent = `↩ Undo (${state.undoStack.length})`;
-  $('redoBtn').textContent = `↪ Redo (${state.redoStack.length})`;
-}
-
-// ============================================================================
-// 4. BINARY ENGINE: SVD5 PARSER, STANDALONE GENERATOR & FORMAT TRANSLATORS
-// ============================================================================
-function decodeAscii(buf, start, len) {
-  let s = '';
-  for (let i = 0; i < len; i++) {
-    const c = buf[start + i];
-    if (c === 0) { s += ' '; continue; }
-    s += (c >= 32 && c < 127) ? String.fromCharCode(c) : ' ';
-  }
-  return s;
-}
-
-function writeAscii(buf, start, len, str) {
-  const p = String(str || "Init Patch").padEnd(len, ' ').slice(0, len);
-  for (let i = 0; i < len; i++) {
-    const c = p.charCodeAt(i);
-    buf[start + i] = (c >= 32 && c < 127) ? c : 32;
-  }
-}
-
-function detectPatchCategory(name, tones) {
-  const n = name.trim().toLowerCase();
-  if (!n || n.startsWith('init ') || n === 'init patch' || n === 'init tone' || !tones.some(t => t.active)) return 'INIT';
-  if (/bass|bs|sub|fret|slap/.test(n)) return 'BASS';
-  if (/pad|choir|str|atmo|sweep|vox|voice|warm/.test(n)) return 'PAD';
-  if (/lead|ld|solo|sync|saw/.test(n)) return 'LEAD';
-  if (/ep|piano|clav|org|key|harpsi|celest/.test(n)) return 'KEYS';
-  if (/bell|glass|vibe|marimba|chime|kalimba|gamelan|pluck|harp/.test(n)) return 'BELL';
-  const act = tones.filter(t => t.active);
-  if (act.some(t => t.waveIdx >= 48 && t.waveIdx <= 52)) return 'BASS';
-  if (act.some(t => t.waveIdx >= 24 && t.waveIdx <= 37)) return 'KEYS';
-  if (act.some(t => t.waveIdx >= 38 && t.waveIdx <= 47)) return 'BELL';
-  return (act.reduce((a, t) => a + t.tvaEnv.T1, 0) / act.length >= 25) ? 'PAD' : 'SYNTH';
-}
-
-function parsePatchBlock(block, format = 'JD-08 .SVD', modified = false) {
-  const raw = new Uint8Array(PATCH_SIZE_JD08);
-  raw.set(block.slice(0, PATCH_SIZE_JD08));
-  raw.set(JD08_PATCH_HEADER, 0);
-
-  const name = decodeAscii(raw, 0x010, 16);
-  const patchLevel = raw[0x7B3] || raw[0x24] || 80;
-  const tones = [0, 1, 2, 3].map(t => {
-    const o = 0x670 + t * 80;
-    const waveIdx = raw[o + 0x14] | (raw[o + 0x15] << 8);
-    return {
-      active: raw[o] === 1 || ((raw[0x20] & (1 << t)) !== 0 && raw[o] !== 0),
-      waveIdx,
-      waveName: WAVES[waveIdx] || `Wave #${waveIdx + 1}`,
-      coarse: (raw[o + 0x1B] || 12) - 12,
-      lfo1Rate: raw[o + 0x06] || 0,
-      lfo1Shape: LFO_SHAPES[raw[o + 0x04]] || 'TRI',
-      tvfMode: TVF_MODES[raw[o + 0x30]] || 'LPF',
-      cutoff: raw[o + 0x33] || 0,
-      resonance: raw[o + 0x32] || 0,
-      level: raw[o + 0x3F] || 0,
-      pan: (raw[o + 0x41] || 50) - 50,
-      tvaEnv: {
-        T1: raw[o+0x48]||0, T2: raw[o+0x49]||0, T3: raw[o+0x4A]||0, T4: raw[o+0x4B]||0,
-        L1: raw[o+0x4C]||0, L2: raw[o+0x4D]||0, L3: raw[o+0x4E]||0
-      }
-    };
-  });
-  return { name, patchLevel, tones, category: detectPatchCategory(name, tones), format, modified, raw };
-}
-
-function createInitPatchRaw(name = 'INIT PATCH      ', tpl = null) {
-  const b = tpl ? new Uint8Array(tpl) : new Uint8Array(PATCH_SIZE_JD08);
-  b.set(JD08_PATCH_HEADER, 0);
-  writeAscii(b, 0x010, 16, name);
-  b[0x24] = 80; b[0x2E] = 1; b[0x2F] = 1; b[0x30] = 0x0D;
-  b[0x36] = 1;  b[0x38] = 2; b[0x39] = 2;
-  b[0x50] = 0x5D; b[0x51] = 1; b[0x52] = 0x7F; b[0x53] = 0x7F;
-  b[0x88] = 0x32; b[0x8A] = 0x32; b[0x8C] = 0x40; b[0x8E] = 0x7F;
-  b[0x7B3] = 80;
-  for (let t = 0; t < 4; t++) {
-    const o = 0x670 + t * 80;
-    b[o] = t === 0 ? 1 : 0;
-    b[o+0x04] = 0; b[o+0x06] = 40; b[o+0x14] = 0; b[o+0x15] = 0;
-    b[o+0x1B] = 12; b[o+0x30] = 1; b[o+0x32] = 0; b[o+0x33] = 100;
-    b[o+0x3F] = 80; b[o+0x41] = 50;
-    b[o+0x48] = 0; b[o+0x49] = 50; b[o+0x4A] = 50; b[o+0x4B] = 20;
-    b[o+0x4C] = 100; b[o+0x4D] = 80; b[o+0x4E] = 70;
-  }
-  return b;
-}
-
-function createInitSceneRaw(index = 0) {
-  const b = new Uint8Array(SCENE_SIZE_JD08);
-  writeAscii(b, 0x000, 16, `Init Scene ${String(index + 1).padStart(3, ' ')}`);
-  const tempoVal = 12000; // 120.00 BPM
-  b[0x012] = tempoVal & 0xFF;
-  b[0x013] = (tempoVal >> 8) & 0xFF;
-  b[0x034] = index % 256; // Part A Patch
-  b[0x035] = 100;         // Part A Level
-  b[0x088] = (index + 1) % 256; // Part B Patch
-  b[0x089] = 100;         // Part B Level
-  return b;
-}
-
-function parseSceneBlock(block, modified = false) {
-  const raw = new Uint8Array(SCENE_SIZE_JD08);
-  raw.set(block.slice(0, SCENE_SIZE_JD08));
-  const tempoRaw = (raw[0x012] | (raw[0x013] << 8));
-  const tempo = (tempoRaw > 2000 && tempoRaw < 30000 ? tempoRaw / 100 : 120).toFixed(1);
-  return {
-    name: decodeAscii(raw, 0x000, 16),
-    tempo,
-    partAPatchIdx: raw[0x034] || 0,
-    partALevel: raw[0x035] || 100,
-    partBPatchIdx: raw[0x088] || 0,
-    partBLevel: raw[0x089] || 100,
-    modified,
-    raw
-  };
-}
-
-// Synthesize complete 2,000,908-byte SVD5 container from scratch
-function createBlankSvdDocument() {
-  const rawBuffer = new Uint8Array(2000908);
-  const hdr = [
-    0x4e,0x00,0x53,0x56,0x44,0x35,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-    0x50,0x52,0x46,0x61,0x44,0x44,0x30,0x37,0x50,0x00,0x00,0x00,0x10,0x82,0x16,0x00,
-    0x50,0x41,0x54,0x61,0x44,0x44,0x30,0x37,0x60,0x82,0x16,0x00,0x10,0x00,0x08,0x00,
-    0x53,0x59,0x53,0x61,0x44,0x44,0x30,0x37,0x70,0x82,0x1e,0x00,0x6c,0x05,0x00,0x00,
-    0x44,0x49,0x46,0x61,0x44,0x44,0x30,0x37,0xdc,0x87,0x1e,0x00,0x30,0x00,0x00,0x00
-  ];
-  rawBuffer.set(hdr, 0);
-  const prfBaseOffset = 0x50;
-  const patBaseOffset = 0x168260;
-  // Section headers
-  rawBuffer.set([0x80,0x00,0x00,0x00, 0x04,0x2d,0x00,0x00, 0x10,0x00,0x00,0x00, 0x00,0x00,0x00,0x00], prfBaseOffset);
-  rawBuffer.set([0x00,0x01,0x00,0x00, 0x00,0x08,0x00,0x00, 0x10,0x00,0x00,0x00, 0x00,0x00,0x00,0x00], patBaseOffset);
-
-  const patches = Array.from({ length: 256 }, (_, i) => {
-    const raw = createInitPatchRaw(`Init ${getPatchCode(i)}`);
-    rawBuffer.set(raw, patBaseOffset + 16 + i * PATCH_SIZE_JD08);
-    return parsePatchBlock(raw, 'INIT', false);
-  });
-  const scenes = Array.from({ length: 128 }, (_, i) => {
-    const raw = createInitSceneRaw(i);
-    rawBuffer.set(raw, prfBaseOffset + 16 + i * SCENE_SIZE_JD08);
-    return parseSceneBlock(raw, false);
-  });
-  return { rawBuffer, prfBaseOffset, patBaseOffset, patches, scenes };
-}
-
-// Parse native JD-08 .SVD file
-function parseSvdBuffer(uint8) {
-  if (uint8.length < 0x100 || decodeAscii(uint8, 2, 4) !== 'SVD5') {
-    throw new Error('Invalid .SVD header (expected SVD5).');
-  }
-  let prfBaseOffset = 0x50, patBaseOffset = -1;
-  for (let i = 16; i < 128; i += 16) {
-    const tag = decodeAscii(uint8, i, 8);
-    const off = readU32LE(uint8, i + 8);
-    if (tag.startsWith('PRFa')) prfBaseOffset = off;
-    if (tag.startsWith('PATa')) patBaseOffset = off;
-  }
-  if (patBaseOffset === -1) throw new Error('PATaDD07 section not found in .SVD file.');
-
-  const patches = Array.from({ length: 256 }, (_, i) => {
-    const start = patBaseOffset + 16 + i * PATCH_SIZE_JD08;
-    return parsePatchBlock(uint8.slice(start, start + PATCH_SIZE_JD08), 'JD-08 .SVD', false);
-  });
-
-  const hasScenes = prfBaseOffset + 16 + 128 * SCENE_SIZE_JD08 <= uint8.length;
-  const scenes = Array.from({ length: 128 }, (_, i) => {
-    if (!hasScenes) return parseSceneBlock(createInitSceneRaw(i), false);
-    const start = prfBaseOffset + 16 + i * SCENE_SIZE_JD08;
-    return parseSceneBlock(uint8.slice(start, start + SCENE_SIZE_JD08), false);
-  });
-
-  return { rawBuffer: new Uint8Array(uint8), prfBaseOffset, patBaseOffset, patches, scenes };
-}
-
-// Convert JD-800 VST (.bin) -> Array of 2048B Patch Objects
-function parseBIN(uint8) {
-  const magic = decodeAscii(uint8, 0, 4);
-  if (magic !== 'SVZa') throw new Error('Invalid .BIN file (expected SVZa header).');
-  const decomp = pako.inflate(uint8.slice(0x60));
-  if (decodeAscii(decomp, 0, 4) !== 'SVDx') throw new Error('Invalid inner SVDx stream after .BIN decompression.');
-
-  const headerSize = readU32LE(decomp, 4);
-  const itemSize   = readU32LE(decomp, 8);
-  const count      = readU32LE(decomp, 12);
-
-  const patches = [];
-  for (let i = 0; i < count; i++) {
-    const start = headerSize + i * itemSize;
-    const data = new Uint8Array(PATCH_SIZE_JD08);
-    data.set(decomp.slice(start, start + PATCH_SIZE_JD08));
-    const vstLevel = data[6];
-    data.set(JD08_PATCH_HEADER, 0);
-    if (data[0x24] === 0 && vstLevel > 0) data[0x24] = vstLevel;
-    if (data[0x7B3] === 0) data[0x7B3] = data[0x24] || 80;
-    data[0x2F] = 0x01;
-    patches.push(parsePatchBlock(data, 'VST .BIN', true));
-  }
-  return patches;
-}
-
-/*// Convert ZEN-Core (.sdz) -> Array of 2048B Patch Objects
-function parseSDZ(uint8) {
-  if (decodeAscii(uint8, 0, 4) !== 'VEXP') throw new Error('Invalid .SDZ file (expected VEXP header).');
-  const compressed = uint8.slice(0x70);
-  let decomp;
-  try { decomp = pako.inflateRaw(compressed); } catch (e) { decomp = pako.inflate(compressed); }
-
-  const patches = [];
-  let foundStructured = false;
-  for (let i = 0; i < Math.min(decomp.length - 16, 4096); i++) {
-    if (decodeAscii(decomp, i, 4) === 'SVDx') {
-      const hSize = readU32LE(decomp, i + 4);
-      const iSize = readU32LE(decomp, i + 8);
-      const cnt   = readU32LE(decomp, i + 12);
-      if (cnt > 0 && cnt <= 256 && i + hSize + cnt * iSize <= decomp.length) {
-        for (let p = 0; p < cnt; p++) {
-          const start = i + hSize + p * iSize;
-          const data = new Uint8Array(PATCH_SIZE_JD08);
-          data.set(decomp.slice(start, start + PATCH_SIZE_JD08));
-          data.set(JD08_PATCH_HEADER, 0);
-          patches.push(parsePatchBlock(data, 'ZEN .SDZ', true));
-        }
-        foundStructured = true;
-        break;
-      }
-    }
-  }
-
-  if (!foundStructured) {
-    for (let offset = 0; offset + PATCH_SIZE_JD08 <= decomp.length; offset += 16) {
-      let validAscii = true, nonSpace = 0;
-      for (let c = 0; c < 16; c++) {
-        const b = decomp[offset + 16 + c];
-        if (b < 32 || b > 126) { validAscii = false; break; }
-        if (b > 32) nonSpace++;
-      }
-      if (validAscii && nonSpace >= 3 && decomp[offset + 2] <= 0x10 && decomp[offset + 0x38] === 0x02 && decomp[offset + 0x39] === 0x02) {
-        const data = new Uint8Array(PATCH_SIZE_JD08);
-        data.set(decomp.slice(offset, offset + PATCH_SIZE_JD08));
-        data.set(JD08_PATCH_HEADER, 0);
-        patches.push(parsePatchBlock(data, 'ZEN .SDZ', true));
-        offset += PATCH_SIZE_JD08 - 16;
-      }
-    }
-  }
-  if (!patches.length) throw new Error('No compatible JD-800 patches found inside .SDZ container.');
-  return patches;
-}
-*/
-// Convert Classic JD-800 384-byte SysEx slice -> 2048B JD-08 Patch
-function convertJD800Syx384ToJD08(syx384) {
-  const data = createInitPatchRaw(decodeAscii(syx384, 0, 16));
-  const patchLevel = syx384[18] <= 100 ? syx384[18] : 80;
-  data[0x24] = patchLevel;
-  data[0x7B3] = patchLevel;
-  const activeTones = syx384[26] & 0x0F;
-  data[0x20] = activeTones;
-  data[0x36] = activeTones;
-  data[0x84] = syx384[27];
-  data[0x86] = syx384[28];
-  data[0x54] = syx384[29];
-  data[0x56] = syx384[30];
-  data[0x58] = syx384[31];
-  data[0x5A] = syx384[32];
-  data[0x5C] = syx384[33];
-
-  const toneOffsetsJD800 = [96, 168, 240, 312];
-  const toneClassicOffsetsJD08 = [0x670, 0x6C0, 0x710, 0x760];
-  const toneEngineOffsetsJD08  = [0xD8,  0x148, 0x1B8, 0x228];
-
-  for (let t = 0; t < 4; t++) {
-    const srcOff = toneOffsetsJD800[t];
-    if (srcOff + 72 > syx384.length) break;
-    const tone = syx384.slice(srcOff, srcOff + 72);
-    const isAct = (activeTones & (1 << t)) ? 1 : 0;
-
-    const waveMSB = tone[8], waveLSB = tone[9];
-    const waveID  = ((waveMSB & 0x01) << 7) | (waveLSB & 0x7F);
-    const coarse  = tone[11];
-    const fine    = tone[12];
-    const cutoff  = tone[32];
-    const res     = tone[33];
-    const tvaLvl  = tone[52];
-
-    // Populate JD-08 Inspector block (0x670 + t*80)
-    const cOff = toneClassicOffsetsJD08[t];
-    data[cOff]        = isAct;
-    data[cOff + 0x04] = tone[18] || 0;      // LFO1 Shape
-    data[cOff + 0x06] = tone[19] || 40;     // LFO1 Rate
-    data[cOff + 0x14] = waveID & 0xFF;      // Wave LSB
-    data[cOff + 0x15] = (waveID >> 8) & 0xFF;
-    data[cOff + 0x1B] = Math.max(0, Math.min(24, coarse - 36));
-    data[cOff + 0x30] = (tone[31] % 4) || 1; // TVF Mode
-    data[cOff + 0x32] = res;
-    data[cOff + 0x33] = cutoff;
-    data[cOff + 0x3F] = tvaLvl;
-    data[cOff + 0x41] = 50;
-    data[cOff + 0x48] = tone[56] || 0;
-    data[cOff + 0x49] = tone[58] || 50;
-    data[cOff + 0x4A] = tone[60] || 50;
-    data[cOff + 0x4B] = tone[62] || 20;
-    data[cOff + 0x4C] = tone[57] || 100;
-    data[cOff + 0x4D] = tone[59] || 80;
-    data[cOff + 0x4E] = tone[61] || 70;
-
-    // Populate JD-08 Execution Engine block (0xD8 + t*0x70)
-    const eOff = toneEngineOffsetsJD08[t];
-    data[eOff + 0x00] = cutoff;
-    data[eOff + 0x14] = isAct;
-    data[eOff + 0x1A] = waveID + 1;
-    data[eOff + 0x22] = tvaLvl;
-    data[eOff + 0x28] = Math.min(255, cutoff * 2);
-    data[eOff + 0x2A] = res;
-    data[eOff + 0x2C] = coarse;
-    data[eOff + 0x2E] = fine;
-  }
-  return parsePatchBlock(data, 'JD-800 .SYX', true);
-}
-
-// Parse Classic JD-800 (.syx) -> Array of 2048B Patch Objects
-function parseSYX(uint8) {
-  const memory = new Map();
-  let i = 0;
-  while (i < uint8.length) {
-    if (uint8[i] === 0xF0) {
-      let end = i + 1;
-      while (end < uint8.length && uint8[end] !== 0xF7) end++;
-      if (end < uint8.length && uint8[i+1] === 0x41 && uint8[i+3] === 0x3D && uint8[i+4] === 0x12) {
-        const a1 = uint8[i+5], a2 = uint8[i+6], a3 = uint8[i+7];
-        const linearAddr = (a1 << 14) | (a2 << 7) | a3;
-        const payload = uint8.slice(i + 8, end - 1);
-        for (let b = 0; b < payload.length; b++) memory.set(linearAddr + b, payload[b]);
-      }
-      i = end + 1;
-    } else i++;
-  }
-
-  const patches = [];
-  const bankBase = (0x05 << 14);
-  for (let p = 0; p < 64; p++) {
-    const pAddr = bankBase + p * 384;
-    if (memory.has(pAddr)) {
-      const syx384 = new Uint8Array(384);
-      for (let b = 0; b < 384; b++) syx384[b] = memory.get(pAddr + b) || 0;
-      patches.push(convertJD800Syx384ToJD08(syx384));
-    }
-  }
-
-  if (!patches.length && memory.has(0)) {
-    const syx384 = new Uint8Array(384);
-    for (let b = 0; b < 384; b++) syx384[b] = memory.get(b) || 0;
-    patches.push(convertJD800Syx384ToJD08(syx384));
-  }
-
-  if (!patches.length) {
-    const sortedAddrs = Array.from(memory.keys()).sort((a,b) => a - b);
-    if (sortedAddrs.length >= 384) {
-      const flat = new Uint8Array(sortedAddrs.length);
-      for (let k = 0; k < sortedAddrs.length; k++) flat[k] = memory.get(sortedAddrs[k]);
-      const startOff = flat.length >= 64 * 384 ? flat.length - 64 * 384 : 0;
-      for (let pos = startOff; pos + 384 <= flat.length; pos += 384) {
-        patches.push(convertJD800Syx384ToJD08(flat.slice(pos, pos + 384)));
-      }
-    }
-  }
-  if (!patches.length) throw new Error('No valid JD-800 SysEx patch messages found in .SYX file.');
-  return patches;
-}
-
-function applySceneRelinkMap(doc, oldToNewMap) {
-  if (!doc || !$('autoRelinkCheckbox').checked || !oldToNewMap.size) return;
-  doc.scenes.forEach(sc => {
-    if (oldToNewMap.has(sc.partAPatchIdx)) { sc.raw[0x034] = sc.partAPatchIdx = oldToNewMap.get(sc.partAPatchIdx); sc.modified = true; }
-    if (oldToNewMap.has(sc.partBPatchIdx)) { sc.raw[0x088] = sc.partBPatchIdx = oldToNewMap.get(sc.partBPatchIdx); sc.modified = true; }
-  });
-}
-
-// ============================================================================
-// 5. FILE LOADING, EXPORT & MULTI-FORMAT BANK INJECTION
-// ============================================================================
-function initBlankSvdInPane(k, silent = false) {
-  if (!silent) pushUndoState(`New Blank SVD (${k})`);
-  const p = state[k];
-  p.data = createBlankSvdDocument();
-  p.fileName = `JD08Backup_${k}.svd`;
-  if (k === 'R') p.isSharedWithL = false;
-  else if (state.R.isSharedWithL) { state.R.data = p.data; updatePaneUI('R'); }
-  updatePaneUI(k);
-  if (!silent) setStatus(`Initialized blank 256-Patch / 128-Scene SVD5 template in Pane ${k}.`);
-}
-
-async function handleFileLoad(k, file) {
-  if (!file) return;
-  try {
-    const uint8 = new Uint8Array(await file.arrayBuffer());
-    const ext = file.name.split('.').pop().toLowerCase();
-    const p = state[k];
-
-    if (ext === 'svd') {
-      pushUndoState(`Load SVD (${k})`);
-      p.data = parseSvdBuffer(uint8);
-      p.fileName = file.name;
-      if (k === 'R') p.isSharedWithL = false;
-      else if (state.R.isSharedWithL) { state.R.data = p.data; state.R.fileName = file.name; updatePaneUI('R'); }
-      const s = isSceneBank(p.bank) ? (p.bank === 'PRF1' ? 0 : 64) : p.bank * 64;
-      p.selectedIdx = s; p.selectedList = [s]; p.lastClickedIdx = s;
-      updatePaneUI(k);
-      setActivePane(k);
-      setStatus(`Loaded full JD-08 .SVD backup: ${file.name} (256 Patches, 128 Scenes)`);
-    } else if (['bin', 'sdz', 'syx'].includes(ext)) {
-      let importedPatches = [];
-      if (ext === 'bin') importedPatches = parseBIN(uint8);
-      else if (ext === 'sdz') importedPatches = parseSDZ(uint8);
-      else if (ext === 'syx') importedPatches = parseSYX(uint8);
-
-      if (!p.data) p.data = createBlankSvdDocument();
-      if (isSceneBank(p.bank)) switchBankTab(k, 0, true);
-
-      pushUndoState(`Import ${ext.toUpperCase()} (${k})`);
-      // Inject imported patches starting at current bank start (if 64 patches) or selected slot
-      const baseIdx = importedPatches.length >= 64 ? (p.bank * 64) : p.selectedIdx;
-      const newSel = [];
-      importedPatches.forEach((patObj, offset) => {
-        const target = baseIdx + offset;
-        if (target < 256) {
-          p.data.patches[target] = patObj;
-          newSel.push(target);
-        }
-      });
-      p.fileName = `${file.name} ➔ SVD`;
-      if (k === 'R') p.isSharedWithL = false;
-      if (newSel.length) { p.selectedList = newSel; p.selectedIdx = newSel[0]; p.lastClickedIdx = newSel[0]; }
-      updatePaneUI(k);
-      setActivePane(k);
-      setStatus(`Translated & imported ${newSel.length} patches from ${file.name} into Pane ${k} (${getPatchCode(baseIdx)}..${getPatchCode(newSel[newSel.length-1])}).`);
-    } else {
-      throw new Error('Unsupported file extension. Use .svd, .bin, or .syx');
-    }
-  } catch (err) {
-    alert(`File Import Error: ${err.message}`);
-  }
-}
-
-function linkRightToLeft() {
-  if (!state.L.data) return;
-  Object.assign(state.R, { data: state.L.data, fileName: state.L.fileName, isSharedWithL: true });
-  const s = isSceneBank(state.R.bank) ? (state.R.bank === 'PRF1' ? 0 : 64) : state.R.bank * 64;
-  state.R.selectedIdx = s; state.R.selectedList = [s]; state.R.lastClickedIdx = s;
-  updatePaneUI('R');
-  setStatus('Right Pane is now linked to Left Pane memory (Shared File Mode).');
-}
-
-function saveSvd(k) {
-  const doc = state[k].data;
-  if (!doc) return;
-  doc.scenes.forEach((s, i) => doc.rawBuffer.set(s.raw, doc.prfBaseOffset + 16 + i * SCENE_SIZE_JD08));
-  doc.patches.forEach((p, i) => {
-    p.raw.set(JD08_PATCH_HEADER, 0);
-    doc.rawBuffer.set(p.raw, doc.patBaseOffset + 16 + i * PATCH_SIZE_JD08);
-  });
-  const url = URL.createObjectURL(new Blob([doc.rawBuffer], { type: 'application/octet-stream' }));
-  const dlName = state[k].fileName.toLowerCase().endsWith('.svd') ? state[k].fileName : 'JD08Backup.svd';
-  Object.assign(document.createElement('a'), { href: url, download: dlName }).click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-  setStatus(`Exported ${dlName} (${doc.rawBuffer.length.toLocaleString()} bytes).`);
-}
-
-// ============================================================================
-// 6. RENDERING ENGINE (GRID VIEW & COMMANDER LIST VIEW)
-// ============================================================================
-function refreshAll() {
-  renderPane('L');
-  renderPane('R');
-  updateInspector();
-  updateBridgeButtons();
-  updateUndoButtons();
-}
-
-function updatePaneUI(k) {
-  const p = state[k];
-  if (!p.data) return;
-  const b = $(`badge${k}`);
-  b.textContent = (k === 'R' && p.isSharedWithL) ? `🔗 Shared with L (${p.fileName})` : p.fileName;
-  b.className = (k === 'R' && p.isSharedWithL) ? 'bdg shd' : 'bdg';
-  renderPane(k);
-  updateBridgeButtons();
-}
-
-function updateBridgeButtons() {
-  const act = state[state.activePane], cnt = act.selectedList.length;
-  $('selCountLabel').textContent = `Sel: ${cnt} (${state.activePane})`;
-  $('pasteClipBtn').disabled = !state.clipboard.items.length;
-}
-
-function renderPane(k) {
-  const p = state[k];
-  if (!p.data) return;
-  const wrap = $(`wrap${k}`);
-  const q = $(`search${k}`).value.trim().toLowerCase();
-  const catFlt = $(`catFilter${k}`).value;
-  const scMode = isSceneBank(p.bank);
-
-  wrap.innerHTML = '';
-  p.visibleIndices = [];
-
-  const isFiltering = q !== '' || (!scMode && catFlt !== 'ALL');
-  const start = isFiltering ? 0 : (scMode ? (p.bank === 'PRF1' ? 0 : 64) : p.bank * 64);
-  const end   = isFiltering ? (scMode ? 128 : 256) : start + 64;
-
-  const container = document.createElement('div');
-  if (state.viewMode === 'grid') {
-    container.className = 'grid';
-  } else {
-    container.className = 'list-tbl';
-    container.innerHTML = scMode
-      ? `<div class="list-hdr"><div>SLOT</div><div>SCENE NAME</div><div>TEMPO</div><div>PART A</div><div>PART B</div></div>`
-      : `<div class="list-hdr"><div>SLOT</div><div>PATCH NAME</div><div>TAG</div><div>TONES</div><div style="text-align:right">SOURCE</div></div>`;
-  }
-
-  for (let i = start; i < end; i++) {
-    if (scMode) {
-      const sc = p.data.scenes[i], code = getSceneCode(i);
-      const pA = getPatchCode(sc.partAPatchIdx), pB = getPatchCode(sc.partBPatchIdx);
-      const nA = p.data.patches[sc.partAPatchIdx]?.name.trim() || '', nB = p.data.patches[sc.partBPatchIdx]?.name.trim() || '';
-      if (q && ![sc.name, code, nA, nB].some(x => x.toLowerCase().includes(q))) continue;
-
-      p.visibleIndices.push(i);
-      const ord = p.selectedList.indexOf(i), sel = ord !== -1;
-      const init = !sc.name.trim() || sc.name.trim().toLowerCase().startsWith('init scene');
-
-      const el = document.createElement('div');
-      el.draggable = true;
-      if (state.viewMode === 'grid') {
-        el.className = `cell sc ${sel?'sel':''} ${i===p.selectedIdx?'pri-sel':''} ${init?'emp':''} ${sc.modified?'mod':''}`;
-        el.innerHTML = `${sel && p.selectedList.length>1 ? `<span class="s-ord">${ord+1}</span>`:''}
-          <div class="cid"><span>${code}</span><span>${Math.round(sc.tempo)}BPM</span></div>
-          <div class="cname">${esc(sc.name.trim() || '(Scene)')}</div>
-          <div class="cmeta"><span>A:${pA}</span><span>B:${pB}</span></div>`;
-      } else {
-        el.className = `list-row sc ${sel?'sel':''} ${i===p.selectedIdx?'pri-sel':''} ${init?'emp':''}`;
-        el.innerHTML = `<div class="cid">[${code}]${sc.modified?'*':''}</div>
-          <div class="cname">${esc(sc.name)}</div>
-          <div>${sc.tempo}</div>
-          <div>A:${pA}</div>
-          <div>B:${pB}</div>`;
-      }
-      bindSlotEvents(el, k, true, i);
-      container.appendChild(el);
-    } else {
-      const pat = p.data.patches[i], code = getPatchCode(i);
-      if (catFlt !== 'ALL' && pat.category !== catFlt) continue;
-      const wMatch = pat.tones.some(t => t.active && t.waveName.toLowerCase().includes(q));
-      if (q && !pat.name.toLowerCase().includes(q) && !code.toLowerCase().includes(q) && !wMatch && !pat.category.toLowerCase().includes(q)) continue;
-
-      p.visibleIndices.push(i);
-      const ord = p.selectedList.indexOf(i), sel = ord !== -1;
-      const firstT = pat.tones.find(t => t.active);
-
-      const el = document.createElement('div');
-      el.draggable = true;
-      if (state.viewMode === 'grid') {
-        el.className = `cell ${sel?'sel':''} ${i===p.selectedIdx?'pri-sel':''} ${pat.category==='INIT'?'emp':''} ${pat.modified?'mod':''}`;
-        el.innerHTML = `${sel && p.selectedList.length>1 ? `<span class="s-ord">${ord+1}</span>`:''}
-          <div class="cid"><span>${code}</span><div class="dots">${pat.tones.map(t=>`<span class="dot ${t.active?'on':''}"></span>`).join('')}</div></div>
-          <div class="cname">${esc(pat.name.trim() || '(Empty)')}</div>
-          <div class="cmeta"><span class="ctag ${pat.category}">${pat.category}</span><span>W:${esc(firstT ? firstT.waveName.slice(0,3) : '---')}</span></div>`;
-      } else {
-        el.className = `list-row ${sel?'sel':''} ${i===p.selectedIdx?'pri-sel':''} ${pat.category==='INIT'?'emp':''}`;
-        el.innerHTML = `<div class="cid">[${code}]${pat.modified?'*':''}</div>
-          <div class="cname">${esc(pat.name)}</div>
-          <div><span class="ctag ${pat.category}">${pat.category}</span></div>
-          <div><div class="dots">${pat.tones.map(t=>`<span class="dot ${t.active?'on':''}"></span>`).join('')}</div></div>
-          <div style="text-align:right;font-size:.63rem;color:var(--mut)">${esc(pat.format)}</div>`;
-      }
-      bindSlotEvents(el, k, false, i);
-      container.appendChild(el);
-    }
-  }
-  wrap.appendChild(container);
-}
-
-function bindSlotEvents(el, k, isScene, i) {
-  el.onclick = e => { e.stopPropagation(); handleSlotSelection(k, i, e); };
-  el.ondblclick = e => { e.stopPropagation(); quickRenamePrompt(k, i, isScene); };
-  el.ondragstart = e => {
-    const p = state[k];
-    if (!p.selectedList.includes(i)) { p.selectedList = [i]; p.selectedIdx = i; renderPane(k); }
-    state.dragSource = { pane: k, isScene, indices: [...p.selectedList] };
-    e.dataTransfer.effectAllowed = 'copyMove';
-  };
-  el.ondragover = e => {
-    if (state.dragSource && state.dragSource.isScene === isScene) {
-      e.preventDefault();
-      el.classList.add('d-over');
-    }
-  };
-  el.ondragleave = () => el.classList.remove('d-over');
-  el.ondrop = e => {
-    e.preventDefault();
-    el.classList.remove('d-over');
-    if (state.dragSource && state.dragSource.isScene === isScene) {
-      const isCrossPane = state.dragSource.pane !== k;
-      const useSwap = isCrossPane ? (state.dragMode === 'swap') : (state.dragMode === 'swap');
-      executeBatchTransfer(state.dragSource.pane, state.dragSource.indices, k, i, isScene, useSwap);
-      state.dragSource = null;
-    }
-  };
-}
-
-function handleSlotSelection(k, idx, e) {
-  const p = state[k];
-  if (e.shiftKey && p.lastClickedIdx !== null) {
-    const v = p.visibleIndices, a = v.indexOf(p.lastClickedIdx), b = v.indexOf(idx);
-    p.selectedList = (a !== -1 && b !== -1) ? v.slice(Math.min(a, b), Math.max(a, b) + 1) : [idx];
-    p.selectedIdx = idx;
-  } else if (e.ctrlKey || e.metaKey) {
-    const pos = p.selectedList.indexOf(idx);
-    if (pos >= 0 && p.selectedList.length > 1) p.selectedList.splice(pos, 1);
-    else if (pos < 0) p.selectedList.push(idx);
-    p.selectedIdx = p.selectedList[p.selectedList.length - 1];
-    p.lastClickedIdx = idx;
-  } else {
-    p.selectedList = [idx]; p.selectedIdx = idx; p.lastClickedIdx = idx;
-  }
-  setActivePane(k);
-}
-
-// ============================================================================
-// 7. BATCH OPERATIONS: TRANSFER, BANK COPY, SORTING, COMPACTING & CLIPBOARD
-// ============================================================================
-function executeBatchTransfer(srcPane, srcIndices, dstPane, dstStartIdx, isScene, isSwap) {
-  const sDoc = state[srcPane].data, dDoc = state[dstPane].data;
-  if (!sDoc || !dDoc || !srcIndices.length) return;
-  pushUndoState(isSwap ? 'Swap Slots' : 'Copy Slots');
-  const max = isScene ? 128 : 256, newSel = [];
-
-  if (isSwap && sDoc === dDoc) {
-    const arr = isScene ? sDoc.scenes : sDoc.patches;
-    const perm = Array.from({ length: max }, (_, i) => i);
-    srcIndices.forEach((sIdx, off) => {
-      const tIdx = dstStartIdx + off;
-      if (tIdx >= max) return;
-      [arr[sIdx], arr[tIdx]] = [arr[tIdx], arr[sIdx]];
-      arr[sIdx].modified = true; arr[tIdx].modified = true;
-      [perm[sIdx], perm[tIdx]] = [perm[tIdx], perm[sIdx]];
-      newSel.push(tIdx);
-    });
-    if (!isScene) {
-      const map = new Map();
-      perm.forEach((oldPos, newPos) => { if (oldPos !== newPos) map.set(oldPos, newPos); });
-      applySceneRelinkMap(sDoc, map);
-    }
-  } else {
-    const cSrc = srcIndices.map(i => {
-      const item = isScene ? sDoc.scenes[i] : sDoc.patches[i];
-      return { raw: new Uint8Array(item.raw), format: item.format };
-    });
-    const cDst = srcIndices.map((_, o) => {
-      if (dstStartIdx + o >= max) return null;
-      const item = isScene ? dDoc.scenes[dstStartIdx + o] : dDoc.patches[dstStartIdx + o];
-      return { raw: new Uint8Array(item.raw), format: item.format };
-    });
-
-    srcIndices.forEach((sIdx, o) => {
-      const tIdx = dstStartIdx + o;
-      if (tIdx >= max) return;
-      if (isScene) {
-        if (isSwap && cDst[o]) sDoc.scenes[sIdx] = parseSceneBlock(cDst[o].raw, true);
-        dDoc.scenes[tIdx] = parseSceneBlock(cSrc[o].raw, true);
-      } else {
-        if (isSwap && cDst[o]) sDoc.patches[sIdx] = parsePatchBlock(cDst[o].raw, cDst[o].format, true);
-        dDoc.patches[tIdx] = parsePatchBlock(cSrc[o].raw, cSrc[o].format, true);
-      }
-      newSel.push(tIdx);
-    });
-  }
-  Object.assign(state[dstPane], { selectedList: newSel, selectedIdx: newSel[0] ?? dstStartIdx, lastClickedIdx: newSel[0] ?? dstStartIdx });
-  setStatus(`${isSwap ? 'Swapped' : 'Copied'} ${newSel.length} slot(s) to Pane ${dstPane}.`);
-  setActivePane(dstPane);
-}
-
-function transferSelected(from, to, isSwap) {
-  if (isSceneBank(state[from].bank) !== isSceneBank(state[to].bank)) {
-    return alert('Both panes must be in the same mode (Patches A-D or Scenes 1-16)!');
-  }
-  executeBatchTransfer(from, state[from].selectedList, to, state[to].selectedIdx, isSceneBank(state[from].bank), isSwap);
-}
-
-function copyEntireActiveBank() {
-  const from = state.activePane, to = from === 'L' ? 'R' : 'L';
-  if (isSceneBank(state[from].bank) !== isSceneBank(state[to].bank)) {
-    return alert('Both panes must be in the same mode (Patches or Scenes) to copy a 64-slot bank!');
-  }
-  const sc = isSceneBank(state[from].bank);
-  const srcStart = sc ? (state[from].bank === 'PRF1' ? 0 : 64) : state[from].bank * 64;
-  const dstStart = sc ? (state[to].bank === 'PRF1' ? 0 : 64) : state[to].bank * 64;
-  const indices = Array.from({ length: 64 }, (_, i) => srcStart + i);
-  executeBatchTransfer(from, indices, to, dstStart, sc, false);
-}
-
-function selectAllInBank(k) {
-  const p = state[k];
-  if (!p.visibleIndices.length) return;
-  p.selectedList = [...p.visibleIndices];
-  p.selectedIdx = p.visibleIndices[0];
-  setActivePane(k);
-}
-
-function selectNoneInBank(k) {
-  const p = state[k];
-  p.selectedList = [p.selectedIdx];
-  setActivePane(k);
-}
-
-function copySelectionToClipboard(isCut = false) {
-  const p = state[state.activePane];
-  if (!p.selectedList.length) return;
-  const sc = isSceneBank(p.bank);
-  state.clipboard = {
-    isScene: sc,
-    items: p.selectedList.map(i => {
-      const it = sc ? p.data.scenes[i] : p.data.patches[i];
-      return { raw: new Uint8Array(it.raw), format: it.format || 'CLIPBOARD' };
-    })
-  };
-  $('clipStatus').textContent = `Clipboard: ${state.clipboard.items.length} ${sc ? 'Scene(s)' : 'Patch(es)'}`;
-  if (isCut) deleteSelectedSlots(); else updateBridgeButtons();
-}
-
-function pasteClipboard() {
-  const p = state[state.activePane];
-  if (!state.clipboard.items.length) return;
-  const sc = isSceneBank(p.bank);
-  if (sc !== state.clipboard.isScene) return alert('Clipboard data type does not match active tab (Patches vs Scenes)!');
-  pushUndoState('Paste Clipboard');
-  const max = sc ? 128 : 256, newSel = [];
-  state.clipboard.items.forEach((item, o) => {
-    const t = p.selectedIdx + o;
-    if (t >= max) return;
-    if (sc) p.data.scenes[t] = parseSceneBlock(new Uint8Array(item.raw), true);
-    else p.data.patches[t] = parsePatchBlock(new Uint8Array(item.raw), item.format, true);
-    newSel.push(t);
-  });
-  p.selectedList = newSel;
-  setStatus(`Pasted ${newSel.length} item(s) into Pane ${state.activePane}.`);
-  refreshAll();
-}
-
-function deleteSelectedSlots() {
-  const p = state[state.activePane];
-  if (!p.selectedList.length) return;
-  pushUndoState('Init Slots');
-  const sc = isSceneBank(p.bank);
-  p.selectedList.forEach(i => {
-    if (sc) p.data.scenes[i] = parseSceneBlock(createInitSceneRaw(i), true);
-    else p.data.patches[i] = parsePatchBlock(createInitPatchRaw('INIT PATCH      ', p.data.patches[i].raw), 'INIT', true);
-  });
-  setStatus(`Initialized ${p.selectedList.length} slot(s) in Pane ${state.activePane}.`);
-  refreshAll();
-}
-
-function reorderBank(k, comparator, label = 'Reorder') {
-  const p = state[k];
-  pushUndoState(label);
-  if (isSceneBank(p.bank)) {
-    const s = p.bank === 'PRF1' ? 0 : 64;
-    const sub = p.data.scenes.slice(s, s + 64).sort(comparator);
-    for (let i = 0; i < 64; i++) { sub[i].modified = true; p.data.scenes[s + i] = sub[i]; }
-  } else {
-    const s = p.bank * 64;
-    const indexed = Array.from({ length: 64 }, (_, i) => ({ oldIdx: s + i, item: p.data.patches[s + i] }))
-      .sort((a, b) => comparator(a.item, b.item));
-    const map = new Map();
-    indexed.forEach((entry, i) => {
-      const nIdx = s + i;
-      entry.item.modified = true;
-      p.data.patches[nIdx] = entry.item;
-      if (entry.oldIdx !== nIdx) map.set(entry.oldIdx, nIdx);
-    });
-    applySceneRelinkMap(p.data, map);
-  }
-  setStatus(`${label} completed in Pane ${k}.`);
-  setActivePane(k);
-}
-
-const isInitItem = x => x.category ? x.category === 'INIT' : (!x.name.trim() || x.name.trim().toLowerCase().startsWith('init scene'));
-const compactBank = k => reorderBank(k, (a, b) => (isInitItem(a) ? 1 : 0) - (isInitItem(b) ? 1 : 0), 'Compact Bank');
-const sortBankAlpha = k => reorderBank(k, (a, b) => isInitItem(a) !== isInitItem(b) ? (isInitItem(a) ? 1 : -1) : a.name.trim().localeCompare(b.name.trim()), 'Sort A-Z');
-const sortBankByCategory = k => reorderBank(k, (a, b) => {
-  if (isInitItem(a) !== isInitItem(b)) return isInitItem(a) ? 1 : -1;
-  const c = (a.category || '').localeCompare(b.category || '');
-  return c !== 0 ? c : a.name.trim().localeCompare(b.name.trim());
-}, 'Sort by Tag');
-
-function quickRenameSelected() {
-  const p = state[state.activePane];
-  quickRenamePrompt(state.activePane, p.selectedIdx, isSceneBank(p.bank));
-}
-
-function quickRenamePrompt(k, idx, sc) {
-  const p = state[k], item = sc ? p.data.scenes[idx] : p.data.patches[idx];
-  const next = prompt(`Rename ${sc ? getSceneCode(idx) : getPatchCode(idx)} (max 16 ASCII chars):`, item.name.trimEnd());
-  if (next === null) return;
-  pushUndoState('Rename');
-  writeAscii(item.raw, sc ? 0 : 0x010, 16, next);
-  if (sc) p.data.scenes[idx] = parseSceneBlock(item.raw, true);
-  else p.data.patches[idx] = parsePatchBlock(item.raw, item.format, true);
-  refreshAll();
-}
-
-function batchRenamePrefix() {
-  const p = state[state.activePane];
-  if (!p.selectedList.length) return;
-  const pref = prompt('Enter prefix to prepend to selected items (e.g. "BS ", "PAD "):', 'BS ');
-  if (!pref) return;
-  pushUndoState('Batch Prefix');
-  const sc = isSceneBank(p.bank);
-  p.selectedList.forEach(i => {
-    const item = sc ? p.data.scenes[i] : p.data.patches[i];
-    writeAscii(item.raw, sc ? 0 : 0x010, 16, pref + item.name.trim());
-    if (sc) p.data.scenes[i] = parseSceneBlock(item.raw, true);
-    else p.data.patches[i] = parsePatchBlock(item.raw, item.format, true);
-  });
-  refreshAll();
-}
-
-// ============================================================================
-// 8. REAL-TIME PARAMETER INSPECTOR & LCD CONTROLLER
-// ============================================================================
-function updateScenePartPatch(part, val) {
-  const p = state[state.activePane], idx = parseInt(val, 10);
-  if (!isSceneBank(p.bank) || isNaN(idx)) return;
-  pushUndoState('Scene Part Link');
-  const sc = p.data.scenes[p.selectedIdx];
-  if (part === 'A') sc.raw[0x034] = sc.partAPatchIdx = idx;
-  else sc.raw[0x088] = sc.partBPatchIdx = idx;
-  sc.modified = true;
-  refreshAll();
-}
-
-function updateInspector() {
-  const k = state.activePane, p = state[k];
-  if (!p.data) return;
-  const scMode = isSceneBank(p.bank), inp = $('lcdNameInput');$('lcdPaneInfo').textContent = `PANE: [${k}] | SEL: ${p.selectedList.length}`;
-
-  if (scMode) {
-    const sc = p.data.scenes[p.selectedIdx], pA = getPatchCode(sc.partAPatchIdx), pB = getPatchCode(sc.partBPatchIdx);
-    $('lcdSlotInfo').textContent = `${getSceneCode(p.selectedIdx)} (#${p.selectedIdx + 1})`;
-    if (document.activeElement !== inp) inp.value = sc.name.trimEnd();
-    $('lcdExtraLeft').textContent = `TEMPO: ${sc.tempo} BPM`;
-    $('lcdExtraRight').textContent = `BI-TIMBRAL SCENE`;
-    const opts = sel => p.data.patches.map((pt, i) => `<option value="${i}" ${i===sel?'selected':''}>${getPatchCode(i)}: ${esc(pt.name.trim()||'(Empty)')}</option>`).join('');
-    $('tonesContainer').innerHTML = ['A','B'].map((pt, i) => {
-      const pIdx = i===0 ? sc.partAPatchIdx : sc.partBPatchIdx, lvl = i===0 ? sc.partALevel : sc.partBLevel;
-      return `<div class="t-card act" style="grid-column:span 2;border-top-color:var(--${i===0?'blu':'amb'})">
-        <div class="row" style="justify-content:space-between;color:#fff;font-weight:700"><span>PART ${pt}</span><span>SLOT: ${getPatchCode(pIdx)}</span></div>
-        <select class="sc-sel" onchange="updateScenePartPatch('${pt}',this.value)">${opts(pIdx)}</select>
-        <div class="p-row"><span>Part ${pt} Level</span><span class="p-val">${lvl}</span></div>
-        <div class="p-row"><span>Binary Offset (${i===0?'0x034':'0x088'})</span><span class="p-val">Patch #${pIdx}</span></div>
-      </div>`;
-    }).join('');
-    $('envDetails').textContent = `Scene Routing ➔ Part A: ${pA} | Part B: ${pB}`;
-  } else {
-    const pat = p.data.patches[p.selectedIdx];
-    const actStr = ['A','B','C','D'].map((l, i) => pat.tones[i].active ? l : '-').join('');
-    $('lcdSlotInfo').textContent = `PATCH ${getPatchCode(p.selectedIdx)} (#${p.selectedIdx + 1})`;
-    if (document.activeElement !== inp) inp.value = pat.name.trimEnd();
-    $('lcdExtraLeft').textContent = `TAG: ${pat.category} | [${actStr}]`;
-    $('lcdExtraRight').textContent = `LVL: ${pat.patchLevel} | ${pat.format}`;
-    $('tonesContainer').innerHTML = pat.tones.map((t, i) => `<div class="t-card ${t.active?'act':''}">
-      <div class="row" style="justify-content:space-between;color:#fff;font-weight:700"><span>TONE ${'ABCD'[i]}</span><span>${t.active?'ON':'OFF'}</span></div>
-      <div class="w-bdg" title="${esc(t.waveName)}">${esc(t.waveName)}</div>
-      <div class="p-row"><span>Lvl / Pan</span><span class="p-val">${t.level} / ${t.pan}</span></div>
-      <div class="p-row"><span>TVF (${t.tvfMode})</span><span class="p-val">${t.cutoff} / R:${t.resonance}</span></div>
-      <div class="p-row"><span>Pitch / LFO1</span><span class="p-val">${t.coarse>0?'+'+t.coarse:t.coarse}st | ${t.lfo1Shape}:${t.lfo1Rate}</span></div>
-    </div>`).join('');
-    const used = [];
-    p.data.scenes.forEach((sc, i) => {
-      if (sc.partAPatchIdx === p.selectedIdx || sc.partBPatchIdx === p.selectedIdx) {
-        used.push(`${getSceneCode(i)} (${sc.name.trim()})`);
-      }
-    });
-    $('envDetails').textContent = `Referenced by Scenes (${used.length}): ${used.join(', ') || 'None (Safe to overwrite)'}`;
-  }
-}
-
-// ============================================================================
-// 9. UI CONTROLS, TABS & KEYBOARD SHORTCUTS
-// ============================================================================
-function setActivePane(k) {
-  state.activePane = k;
-  $('paneL').classList.toggle('act', k === 'L');$('paneR').classList.toggle('act', k === 'R');
-  refreshAll();
-}
-
-function setDragMode(m) {
-  state.dragMode = m;
-  $('modeSwapBtn').classList.toggle('active', m === 'swap');$('modeCopyBtn').classList.toggle('active', m === 'copy');
-}
-
-function setViewMode(v) {
-  state.viewMode = v;
-  $('viewGridBtn').classList.toggle('active', v === 'grid');$('viewListBtn').classList.toggle('active', v === 'list');
-  refreshAll();
-}
-
-function switchBankTab(k, bVal, preserveSel = false) {
-  const p = state[k];
-  $(`tabs${k}`).querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.bank === String(bVal)));
-  p.bank = isSceneBank(bVal) ? bVal : parseInt(bVal, 10);
-  if (!preserveSel) {
-    const s = isSceneBank(p.bank) ? (p.bank === 'PRF1' ? 0 : 64) : p.bank * 64;
-    p.selectedIdx = s; p.selectedList = [s]; p.lastClickedIdx = s;
-  }
-  renderPane(k);
-}
-
-['L', 'R'].forEach(k => {
-  $(`fileInput${k}`).onchange = e => {
-    if (e.target.files.length) handleFileLoad(k, e.target.files[0]);
-    e.target.value = '';
-  };
-  $(`tabs${k}`).querySelectorAll('.tab').forEach(tab => {
-    tab.onclick = e => { e.stopPropagation(); switchBankTab(k, tab.dataset.bank); setActivePane(k); };
-    tab.ondragover = e => {
-      e.preventDefault();
-      tab.classList.add('drag-t');
-      if (String(state[k].bank) !== tab.dataset.bank) switchBankTab(k, tab.dataset.bank, true);
-    };
-    tab.ondragleave = () => tab.classList.remove('drag-t');
-    tab.ondrop = e => {
-      e.preventDefault();
-      tab.classList.remove('drag-t');
-      const b = tab.dataset.bank, sc = isSceneBank(b);
-      if (state.dragSource && state.dragSource.isScene === sc) {
-        executeBatchTransfer(state.dragSource.pane, state.dragSource.indices, k, sc ? (b==='PRF1'?0:64) : parseInt(b,10)*64, sc, state.dragMode === 'swap');
-        state.dragSource = null;
-      }
-    };
-  });
-});
-
-document.body.ondragover = e => e.preventDefault();
-document.body.ondrop = e => {
-  e.preventDefault();
-  if (e.dataTransfer.files?.length) handleFileLoad(state.activePane, e.dataTransfer.files[0]);
-};
-
-$('lcdNameInput').onfocus = () => state.lcdEditSnapshotSaved = false;
-$('lcdNameInput').oninput = e => {
-  const p = state[state.activePane];
-  if (!p.data) return;
-  if (!state.lcdEditSnapshotSaved) { pushUndoState('LCD Rename'); state.lcdEditSnapshotSaved = true; }
-  const n = e.target.value.padEnd(16, ' ').slice(0, 16);
-  if (isSceneBank(p.bank)) {
-    const sc = p.data.scenes[p.selectedIdx];
-    sc.name = n; sc.modified = true;
-    writeAscii(sc.raw, 0, 16, n);
-  } else {
-    const pat = p.data.patches[p.selectedIdx];
-    pat.name = n; pat.modified = true;
-    writeAscii(pat.raw, 0x010, 16, n);
-    pat.category = detectPatchCategory(n, pat.tones);
-  }
-  renderPane('L'); renderPane('R');
-};
-
-window.addEventListener('keydown', e => {
-  if (['INPUT','SELECT'].includes(e.target.tagName)) return;
-  const p = state[state.activePane], k = e.key.toLowerCase();
-  if (['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(e.key) && p.visibleIndices.length) {
-    e.preventDefault();
-    const step = state.viewMode === 'list' ? {ArrowRight:1,ArrowLeft:-1,ArrowDown:1,ArrowUp:-1}[e.key] : {ArrowRight:1,ArrowLeft:-1,ArrowDown:8,ArrowUp:-8}[e.key];
-    const cur = p.visibleIndices.indexOf(p.selectedIdx);
-    const nextPos = cur === -1 ? 0 : Math.min(p.visibleIndices.length - 1, Math.max(0, cur + step));
-    const nextIdx = p.visibleIndices[nextPos];
-    if (e.shiftKey && p.lastClickedIdx !== null) {
-      const a = Math.max(0, p.visibleIndices.indexOf(p.lastClickedIdx));
-      p.selectedList = p.visibleIndices.slice(Math.min(a, nextPos), Math.max(a, nextPos) + 1);
-      p.selectedIdx = nextIdx;
-    } else {
-      p.selectedIdx = nextIdx; p.selectedList = [nextIdx]; p.lastClickedIdx = nextIdx;
-    }
-    return refreshAll();
-  }
-  if (e.ctrlKey || e.metaKey) {
-    if (k === 'z') { e.preventDefault(); undo(); }
-    if (k === 'y') { e.preventDefault(); redo(); }
-    if (k === 'a') { e.preventDefault(); selectAllInBank(state.activePane); }
-    if (k === 'c') { e.preventDefault(); copySelectionToClipboard(false); }
-    if (k === 'x') { e.preventDefault(); copySelectionToClipboard(true); }
-    if (k === 'v') { e.preventDefault(); pasteClipboard(); }
-  } else if (e.key === 'Delete' || e.key === 'Backspace' || e.key === 'F8') {
-    e.preventDefault(); deleteSelectedSlots();
-  } else if (e.key === 'F2') {
-    e.preventDefault(); quickRenameSelected();
-  } else if (e.key === 'F5') {
-    e.preventDefault(); transferSelected(state.activePane, state.activePane === 'L' ? 'R' : 'L', false);
-  } else if (e.key === 'F6') {
-    e.preventDefault(); transferSelected('L', 'R', true);
-  }
-});
-
-// Initialize both panes with ready-to-use 256-slot SVD5 templates on startup
-initBlankSvdInPane('L', true);
-linkRightToLeft();
-setActivePane('L');
-</script>
+    </div>
+  </footer>
+
+  <!-- SYNTHESIS WORKSTATION (PARAMETER OVERVIEW MODAL) -->
+  <div class="di-overlay" id="diOverlay" onclick="if(event.target===this)closeDeepInspector()">
+    <div class="di-box">
+      <div class="di-hdr">
+        <div class="di-hdr-brand">
+          <div class="di-badge">ROLAND <span>JD-08</span></div>
+          <span class="di-sub" id="diSubTitle">PATCH A11 — INIT PATCH</span>
+        </div>
+        <div class="di-hdr-actions">
+          <button class="di-nav-btn" onclick="navigateInspector(-1)" title="Previous Slot (Left Arrow)">◀ Prev</button>
+          <button class="di-nav-btn" onclick="navigateInspector(1)" title="Next Slot (Right Arrow)">Next ▶</button>
+          <button class="di-nav-btn" onclick="quickRenameFromInspector()" title="Rename this slot (F2)">✏️ Rename</button>
+          <button class="di-close" onclick="closeDeepInspector()" title="Close (Esc)">✕</button>
+        </div>
+      </div>
+      <div class="di-tabs" id="diTabs">
+        <div class="di-tab active" data-ditab="0">🎛️ Synth Workstation</div>
+        <div class="di-tab advanced-only" data-ditab="1">▦ 4-Track Matrix</div>
+        <div class="di-tab" data-ditab="2">⚙️ Common & Control</div>
+        <div class="di-tab advanced-only" data-ditab="3">FX Multi-Effects</div>
+        <div class="di-tab advanced-only" data-ditab="4">0x Hex Diff</div>
+      </div>
+      <div class="di-body">
+        <div class="di-panel active" id="diPanel0"></div>
+        <div class="di-panel" id="diPanel1"></div>
+        <div class="di-panel" id="diPanel2"></div>
+        <div class="di-panel" id="diPanel3"></div>
+        <div class="di-panel" id="diPanel4"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM PREFERENCES & THEME SETTINGS MODAL -->
+  <div class="di-overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettingsModal()">
+    <div class="di-box" style="max-width:780px;height:auto;max-height:92vh">
+      <div class="di-hdr">
+        <div class="di-hdr-brand">
+          <div class="di-badge">SETTINGS <span>//</span> PREFERENCES</div>
+          <span class="di-sub">Workflow, Hardware Features & UI Themes</span>
+        </div>
+        <button class="di-close" onclick="closeSettingsModal()" title="Close (Esc)">✕</button>
+      </div>
+
+      <!-- Settings Navigation Tabs -->
+      <div class="di-tabs" id="settingsTabs">
+        <div class="di-tab active" id="setTab-general" onclick="switchSettingsTab('general')">⚙️ GENERAL & WORKFLOW</div>
+        <div class="di-tab" id="setTab-midi" onclick="switchSettingsTab('midi')">🔌 USB MIDI (BETA)</div>
+        <div class="di-tab" id="setTab-themes" onclick="switchSettingsTab('themes')">🎨 THEMES & ACCENTS</div>
+      </div>
+
+      <div class="di-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:16px;max-height:calc(92vh - 125px);overflow-y:auto">
+        <!-- TAB 1: GENERAL & WORKFLOW SETTINGS -->
+        <div class="settings-panel active" id="setPanel-general">
+          <!-- Option: Interactive Guide -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">
+                <span>📖 User Guide &amp; Architecture Tour</span>
+                <span class="el-badge" style="font-size:0.58rem;background:rgba(0,229,200,0.15);color:var(--el-cyan);border:1px solid rgba(0,229,200,0.3);padding:1px 5px;border-radius:3px">Interactive</span>
+              </span>
+              <span class="setting-desc">Reopen the interactive onboarding walkthrough, synth architecture breakdown, and shortcut guide.</span>
+            </div>
+            <div class="setting-ctrl">
+              <button class="fbtn pri" onclick="closeSettingsModal(); openTutorialModal(0)" style="padding:4px 12px;font-size:0.68rem">Launch Guide</button>
+            </div>
+          </div>
+
+          <!-- Option: Disable Scenes -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">
+                <span>🚫 Disable Scene Management Tabs</span>
+                <span class="el-badge" style="font-size:0.58rem;background:rgba(245,166,35,0.15);color:var(--el-amber);border:1px solid rgba(245,166,35,0.3);padding:1px 5px;border-radius:3px">Streamline UI</span>
+              </span>
+              <span class="setting-desc">Hides SCENES 1-8 &amp; 9-16 tabs across both panes, optimizing the librarian purely for the 256 individual Patches (Banks A–D).</span>
+            </div>
+            <div class="setting-ctrl">
+              <label class="switch">
+                <input type="checkbox" id="settingHideScenes" onchange="updateSettingHideScenes(this.checked)">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Option: Default Drag Mode -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">⇄ Default Drag &amp; Drop Action</span>
+              <span class="setting-desc">Default behavior when dragging a patch or scene onto another slot. You can still toggle this in the top toolbar anytime.</span>
+            </div>
+            <div class="setting-ctrl">
+              <select class="setting-select" id="settingDragMode" onchange="updateSettingDragMode(this.value)">
+                <option value="swap">⇄ Swap Slots (Exchange Positions)</option>
+                <option value="copy">➔ Copy / Overwrite (Duplicate Patch)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Option: Double-Click Action -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">🖱️ Double-Click Slot Action</span>
+              <span class="setting-desc">Action triggered when double-clicking any patch card in either pool.</span>
+            </div>
+            <div class="setting-ctrl">
+              <select class="setting-select" id="settingDoubleClick" onchange="updateSettingDoubleClick(this.value)">
+                <option value="inspect">🎛️ Open Synth Workstation (Deep Inspector)</option>
+                <option value="rename">✏️ Quick Inline Rename (F2)</option>
+                <option value="clipboard">📋 Copy Slot to Clipboard (Ctrl+C)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Option: Patch Slot Numbering -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">🔢 Grid Slot Numbering Style</span>
+              <span class="setting-desc">Format used to label patch slots in the sound pool grid.</span>
+            </div>
+            <div class="setting-ctrl">
+              <select class="setting-select" id="settingSlotFormat" onchange="updateSettingSlotFormat(this.value)">
+                <option value="matrix">Roland Matrix: A11 – D88 (Default)</option>
+                <option value="index">Sequential Bank Index: #01 – #64</option>
+                <option value="both">Both: A11 · #01</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Option: Confirm Slot Clear -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">🛡️ Safety Confirmation on Delete / Init</span>
+              <span class="setting-desc">Prompt for confirmation before initializing selected slots to blank default state (Del / F8).</span>
+            </div>
+            <div class="setting-ctrl">
+              <label class="switch">
+                <input type="checkbox" id="settingConfirmClear" checked onchange="updateSettingConfirmClear(this.checked)">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Option: Auto-Relink Scenes Default -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">🔗 Auto-Relink Scenes on Move / Sort</span>
+              <span class="setting-desc">Preserve Scene Part A/B patch links automatically whenever patches are moved, sorted, or compacted.</span>
+            </div>
+            <div class="setting-ctrl">
+              <label class="switch">
+                <input type="checkbox" id="settingAutoRelink" checked onchange="updateSettingAutoRelink(this.checked)">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Option: High-Density UI Density -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">📐 Interface Density &amp; Scaling</span>
+              <span class="setting-desc">Tighter grid spacing and reduced padding for smaller laptop screens or high-density workflows.</span>
+            </div>
+            <div class="setting-ctrl">
+              <select class="setting-select" id="settingUiDensity" onchange="updateSettingUiDensity(this.value)">
+                <option value="standard">Standard (Default)</option>
+                <option value="compact">High-Density Compact (Laptop)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: USB OVERBRIDGE & MIDI INTEGRATION -->
+        <div class="settings-panel" id="setPanel-midi">
+          <!-- Beta Feature Banner -->
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:rgba(255,170,0,0.12);border:1px solid rgba(255,170,0,0.4);border-radius:6px;margin-bottom:12px;color:var(--el-amber)">
+            <span style="font-size:1.25rem;line-height:1">⚠️</span>
+            <div style="font-size:0.75rem;line-height:1.45">
+              <div style="font-weight:800;color:#ffcc44;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Beta Feature Notice</div>
+              <div>The MIDI feature and direct integration with the Roland JD-08 hardware synth is currently in <strong>Beta</strong>. Preset switching (Program Change) and PC speaker audio monitoring are supported. Full bi-directional parameter streaming is experimental.</div>
+            </div>
+          </div>
+
+          <!-- Hardware Connection Status -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">
+                <span>🔌 Roland JD-08 Connection Status</span>
+                <span class="el-badge" id="midiBadgeStatus" style="font-size:0.58rem;background:rgba(255,170,0,0.2);color:var(--el-amber);border:1px solid rgba(255,170,0,0.5);padding:1px 6px;border-radius:3px;font-weight:700">BETA</span>
+              </span>
+              <span class="setting-desc" id="midiStatusDesc">Connect your Roland Boutique JD-08 via USB. Note: MIDI and hardware synth integration is a Beta feature.</span>
+            </div>
+            <div class="setting-ctrl" style="display:flex;gap:6px">
+              <button class="fbtn pri" id="midiConnectBtn" onclick="JD08Midi.connect(true)" style="padding:5px 12px;font-size:0.70rem;font-weight:800">Connect</button>
+              <button class="fbtn" onclick="JD08Midi.connect(true)" style="padding:4px 10px;font-size:0.68rem">🔄 Rescan</button>
+              <button class="fbtn pri" onclick="JD08Midi.testNote()" style="padding:4px 10px;font-size:0.68rem">Test Note</button>
+              <button class="fbtn dng" onclick="JD08Midi.panic()" style="padding:4px 10px;font-size:0.68rem">Panic</button>
+            </div>
+          </div>
+
+          <!-- MIDI Output Port -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">📤 MIDI Output Device</span>
+              <span class="setting-desc">Select the USB MIDI port representing your Roland JD-08.</span>
+            </div>
+            <div class="setting-ctrl">
+              <select class="setting-select" id="settingMidiOutput" onchange="JD08Midi.setOutput(this.value)">
+                <option value="auto">Auto-Detect Roland JD-08</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- MIDI Input Port -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">📥 MIDI Input Device</span>
+              <span class="setting-desc">Select USB MIDI Input (optional, for external controller or JD-08 keyboard).</span>
+            </div>
+            <div class="setting-ctrl">
+              <select class="setting-select" id="settingMidiInput" onchange="JD08Midi.setInput(this.value)">
+                <option value="auto">Auto-Detect Roland JD-08</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- MIDI Channel -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">📻 MIDI Channel</span>
+              <span class="setting-desc">MIDI transmission channel (Default: Channel 1 for Part A, Channel 2 for Part B).</span>
+            </div>
+            <div class="setting-ctrl">
+              <select class="setting-select" id="settingMidiChannel" onchange="JD08Midi.setChannel(this.value)">
+                <option value="both">Broadcast to All Active Parts (Ch 1+2+3 - Recommended)</option>
+                <option value="2">Channel 2 (Part A on this JD-08)</option>
+                <option value="3">Channel 3 (Part B on this JD-08)</option>
+                <option value="1">Channel 1 (Standard Default)</option>
+                <option value="4">Channel 4</option>
+                <option value="5">Channel 5</option>
+                <option value="6">Channel 6</option>
+                <option value="7">Channel 7</option>
+                <option value="8">Channel 8</option>
+                <option value="9">Channel 9</option>
+                <option value="10">Channel 10</option>
+                <option value="11">Channel 11</option>
+                <option value="12">Channel 12</option>
+                <option value="13">Channel 13</option>
+                <option value="14">Channel 14</option>
+                <option value="15">Channel 15</option>
+                <option value="16">Channel 16</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Real-Time Parameter Sync -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">⚡ Real-Time Parameter Streaming (Overbridge Mode)</span>
+              <span class="setting-desc">Instantly transmit Cutoff, Resonance, Level, Envelopes, and Waveforms over USB when moving sliders or knobs.</span>
+            </div>
+            <div class="setting-ctrl">
+              <label class="switch">
+                <input type="checkbox" id="settingMidiLiveSync" checked onchange="JD08Midi.setLiveSync(this.checked)">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- USB Audio PC Monitor -->
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">🔊 PC Speaker Audio Monitor (Web Audio API)</span>
+              <span class="setting-desc">Stream Roland JD-08 digital USB Audio directly into your PC speakers or laptop headphones.</span>
+            </div>
+            <div class="setting-ctrl">
+              <button class="fbtn pri ob-monitor-btn" onclick="toggleUsbAudioMonitor()" style="padding:5px 12px;font-size:0.68rem">🔈 PC SPK: OFF</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: THEMES & COLOR ACCENTS -->
+        <div class="settings-panel" id="setPanel-themes">
+          <!-- Preset Themes -->
+          <div>
+            <div style="font-size:0.70rem;font-weight:800;color:var(--el-amber);letter-spacing:1px;margin-bottom:10px">PRESET HARDWARE THEMES</div>
+            <div class="theme-preset-grid">
+              <div class="theme-card active" id="tc-elektron" onclick="applyThemePreset('elektron')">
+                <div class="theme-swatches" style="background:#08090c">
+                  <span style="background:#f5a623"></span>
+                  <span style="background:#00e5c8"></span>
+                  <span style="background:#ff5533"></span>
+                </div>
+                <div class="theme-title">Elektron Dark</div>
+                <div class="theme-desc">Amber / Cyan / Coral</div>
+              </div>
+              <div class="theme-card" id="tc-jd800" onclick="applyThemePreset('jd800')">
+                <div class="theme-swatches" style="background:#0e1014">
+                  <span style="background:#ff5500"></span>
+                  <span style="background:#00d2be"></span>
+                  <span style="background:#ff2a2a"></span>
+                </div>
+                <div class="theme-title">Roland JD-800</div>
+                <div class="theme-desc">Neon Orange / Cyan</div>
+              </div>
+              <div class="theme-card" id="tc-cyberpunk" onclick="applyThemePreset('cyberpunk')">
+                <div class="theme-swatches" style="background:#0a0712">
+                  <span style="background:#c084fc"></span>
+                  <span style="background:#06b6d4"></span>
+                  <span style="background:#f43f5e"></span>
+                </div>
+                <div class="theme-title">Cyberpunk</div>
+                <div class="theme-desc">Violet / Sky Blue / Pink</div>
+              </div>
+              <div class="theme-card" id="tc-matrix" onclick="applyThemePreset('matrix')">
+                <div class="theme-swatches" style="background:#040905">
+                  <span style="background:#22c55e"></span>
+                  <span style="background:#86efac"></span>
+                  <span style="background:#ef4444"></span>
+                </div>
+                <div class="theme-title">Phosphor Matrix</div>
+                <div class="theme-desc">OLED Green / Mint</div>
+              </div>
+              <div class="theme-card" id="tc-nord" onclick="applyThemePreset('nord')">
+                <div class="theme-swatches" style="background:#14080a">
+                  <span style="background:#ef4444"></span>
+                  <span style="background:#38bdf8"></span>
+                  <span style="background:#f59e0b"></span>
+                </div>
+                <div class="theme-title">Nord Modular</div>
+                <div class="theme-desc">Crimson / Ice / Gold</div>
+              </div>
+              <div class="theme-card" id="tc-monochrome" onclick="applyThemePreset('monochrome')">
+                <div class="theme-swatches" style="background:#060709">
+                  <span style="background:#e2e8f0"></span>
+                  <span style="background:#38bdf8"></span>
+                  <span style="background:#94a3b8"></span>
+                </div>
+                <div class="theme-title">Monochrome</div>
+                <div class="theme-desc">Studio White / Slate</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Custom Accent Color Pickers -->
+          <div>
+            <div style="font-size:0.70rem;font-weight:800;color:var(--el-amber);letter-spacing:1px;margin-bottom:10px">CUSTOM ACCENT PICKERS</div>
+            <div class="color-picker-grid">
+              <div class="color-card">
+                <div class="color-card-info">
+                  <span class="color-card-name">Primary Accent</span>
+                  <span class="color-card-desc">Knobs, Amber, Selection border</span>
+                </div>
+                <div class="color-card-ctrl">
+                  <input type="color" id="pickerAmber" value="#f5a623" onchange="updateCustomColor('--el-amber', this.value)">
+                  <span class="color-hex" id="hexAmber">#f5a623</span>
+                </div>
+              </div>
+              <div class="color-card">
+                <div class="color-card-info">
+                  <span class="color-card-name">Secondary Accent</span>
+                  <span class="color-card-desc">TVF Filter, LFO, Scope Cyan</span>
+                </div>
+                <div class="color-card-ctrl">
+                  <input type="color" id="pickerCyan" value="#00e5c8" onchange="updateCustomColor('--el-cyan', this.value)">
+                  <span class="color-hex" id="hexCyan">#00e5c8</span>
+                </div>
+              </div>
+              <div class="color-card">
+                <div class="color-card-info">
+                  <span class="color-card-name">Alert / Diff Accent</span>
+                  <span class="color-card-desc">Hex diff, Coral warnings, Init</span>
+                </div>
+                <div class="color-card-ctrl">
+                  <input type="color" id="pickerCoral" value="#ff5533" onchange="updateCustomColor('--el-coral', this.value)">
+                  <span class="color-hex" id="hexCoral">#ff5533</span>
+                </div>
+              </div>
+              <div class="color-card">
+                <div class="color-card-info">
+                  <span class="color-card-name">Chassis Hardware Tint</span>
+                  <span class="color-card-desc">Panel background &amp; header bar</span>
+                </div>
+                <div class="color-card-ctrl">
+                  <input type="color" id="pickerChassis" value="#0f1116" onchange="updateCustomColor('--el-bg-chassis', this.value)">
+                  <span class="color-hex" id="hexChassis">#0f1116</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Actions -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--el-border-mid)">
+          <button class="fbtn" onclick="resetAllSettingsToDefault()">↺ Reset to Defaults</button>
+          <button class="fbtn pri" style="min-width:110px" onclick="closeSettingsModal()">✓ Save &amp; Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY / TAG SELECTION MODAL -->
+  <div class="di-overlay" id="tagOverlay" onclick="if(event.target===this)closeTagModal()">
+    <div class="di-box" style="max-width:480px;height:auto">
+      <div class="di-hdr">
+        <div class="di-hdr-brand">
+          <div class="di-badge">PATCH <span>//</span> CATEGORY TAG</div>
+          <span class="di-sub" id="tagModalSub">Set Category for Selected Patches</span>
+        </div>
+        <button class="di-close" onclick="closeTagModal()" title="Close (Esc)">✕</button>
+      </div>
+      <div class="di-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:0.68rem;font-weight:700;color:var(--el-amber);letter-spacing:0.8px">SELECT PRESET CATEGORY:</div>
+        <div class="tag-quick-grid" id="tagQuickGrid"></div>
+        <div style="border-top:1px solid var(--el-border-mid);padding-top:12px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:0.68rem;font-weight:700;color:var(--el-text-muted);letter-spacing:0.8px">OR ENTER CUSTOM TAG:</div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="tagCustomInput" class="sbox" style="flex:1;text-transform:uppercase" placeholder="e.g. ACID, DRUM, FX, ARP..." maxlength="8" onkeydown="if(event.key==='Enter')applyCustomTag()">
+            <button class="fbtn pri" onclick="applyCustomTag()" style="padding:4px 14px;min-width:90px">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIRST-TIME ONBOARDING & ARCHITECTURE TUTORIAL MODAL -->
+  <div class="di-overlay" id="tutorialOverlay" onclick="if(event.target===this)closeTutorialModal()">
+    <div class="di-box tutorial-box" style="max-width:860px;height:auto;max-height:92vh">
+      
+      <!-- Tutorial Header -->
+      <div class="di-hdr">
+        <div class="di-hdr-brand">
+          <div class="di-badge" style="background:#1b1506;border-color:var(--el-amber);color:var(--el-amber)">GUIDE <span>//</span> ONBOARDING</div>
+          <span class="di-sub" style="color:#fff;font-weight:700">Roland JD-08 Total Patch Commander &amp; Librarian</span>
+        </div>
+        <button class="di-close" onclick="closeTutorialModal()" title="Close (Esc)">✕</button>
+      </div>
+
+      <!-- Step Navigation Indicators -->
+      <div class="tutorial-steps-bar">
+        <div class="tut-step active" onclick="goToTutorialStep(0)" id="tutStepBtn0">
+          <span class="tut-num">1</span>
+          <span class="tut-name">Overview</span>
+        </div>
+        <div class="tut-step" onclick="goToTutorialStep(1)" id="tutStepBtn1">
+          <span class="tut-num">2</span>
+          <span class="tut-name">Librarian</span>
+        </div>
+        <div class="tut-step" onclick="goToTutorialStep(2)" id="tutStepBtn2">
+          <span class="tut-num">3</span>
+          <span class="tut-name">4-Tone Engine</span>
+        </div>
+        <div class="tut-step" onclick="goToTutorialStep(3)" id="tutStepBtn3">
+          <span class="tut-num">4</span>
+          <span class="tut-name">USB MIDI (Beta)</span>
+        </div>
+        <div class="tut-step" onclick="goToTutorialStep(4)" id="tutStepBtn4">
+          <span class="tut-num">5</span>
+          <span class="tut-name">Shortcuts</span>
+        </div>
+      </div>
+
+      <!-- Tutorial Body Slides -->
+      <div class="tutorial-body">
+        
+        <!-- Slide 0: Welcome & Architecture -->
+        <div class="tut-slide" id="tutSlide0">
+          <div class="tut-slide-title">🎛️ Welcome to Roland JD-08 Total Commander</div>
+          <div class="tut-slide-subtitle">A high-performance patch librarian, binary backup editor, and deep sound design workspace built specifically for the Roland Boutique JD-08 and classic Roland JD-800 architecture.</div>
+          
+          <div class="tut-grid">
+            <div class="tut-card">
+              <div class="tut-card-icon">🗂️</div>
+              <div class="tut-card-title">Dual Independent Pools</div>
+              <div class="tut-card-desc">Work simultaneously with two full sound banks: <strong>Left Pool</strong> and <strong>Right Pool</strong>. Each pool manages <strong>256 Patches</strong> (Banks A–D) and <strong>128 Scenes</strong> (Banks 1–16). Compare, organize, and merge files effortlessly.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">💾</div>
+              <div class="tut-card-title">Hardware-Accurate SVD5</div>
+              <div class="tut-card-desc">Directly loads and saves standard Roland Boutique backup files (<strong>.SVD / SVD5</strong>). Supports loading single patch SysEx files and generating Roland-compatible backups without data loss.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">🔌</div>
+              <div class="tut-card-title">Hardware USB Integration (Beta)</div>
+              <div class="tut-card-desc">Connect your physical Roland JD-08 via USB. Click patches to instantly listen on the hardware synth, route audio to your PC speakers, and play notes live from your keyboard.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 1: Dual Pool Librarian -->
+        <div class="tut-slide" id="tutSlide1" style="display:none">
+          <div class="tut-slide-title">📂 Dual Pool Librarian &amp; Drag-and-Drop Power</div>
+          <div class="tut-slide-subtitle">Organize, reorganize, and manage entire sound collections with speed and precision.</div>
+          
+          <div class="tut-grid">
+            <div class="tut-card">
+              <div class="tut-card-icon">⇄</div>
+              <div class="tut-card-title">Swap &amp; Copy Drag Modes</div>
+              <div class="tut-card-desc">Toggle the drag mode in the header: <strong>⇄ Swap</strong> exchanges positions of two slots; <strong>➔ Copy</strong> duplicates the source patch into the destination slot. Drag within a pane or across panes.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">🌉</div>
+              <div class="tut-card-title">Central Bridge Operations</div>
+              <div class="tut-card-desc">The central strip gives you one-click batch tools: <strong>Copy ➔</strong> (Left to Right), <strong>⬅ Copy</strong> (Right to Left), <strong>⇄ Swap</strong>, standard <strong>Clipboard</strong> tools, and <strong>🏷️ Tagging</strong>.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">🧹</div>
+              <div class="tut-card-title">Bank Tools: Sort &amp; Compact</div>
+              <div class="tut-card-desc">Click <strong>🛠️ TOOLS</strong> on any bank header to open the tools drawer: sort alphabetically, sort by category tag, or <strong>🧹 Compact</strong> to eliminate empty slots.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">🔗</div>
+              <div class="tut-card-title">Auto-Relink Scenes</div>
+              <div class="tut-card-desc">When enabled in the top header, moving or sorting patches in Banks A–D automatically updates all Scene Part A and Part B patch pointers so performance scenes never break.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 2: 4-Tone Deep Synth Inspector -->
+        <div class="tut-slide" id="tutSlide2" style="display:none">
+          <div class="tut-slide-title">🎛️ Deep 4-Tone Synthesizer Engine</div>
+          <div class="tut-slide-subtitle">Inspect, sculpt, and fine-tune every parameter of the legendary Roland JD-800 / JD-08 sound engine.</div>
+          
+          <div class="tut-grid">
+            <div class="tut-card">
+              <div class="tut-card-icon">🧬</div>
+              <div class="tut-card-title">4-Tone Architecture</div>
+              <div class="tut-card-desc">Every JD-08 patch is built from up to <strong>4 discrete Tones</strong> (T1–T4). Each tone has its own Wave Generator, TVF Filter, TVA Amplifier, Multi-stage Envelopes, and dedicated LFOs.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">📟</div>
+              <div class="tut-card-title">Overview Dock Console</div>
+              <div class="tut-card-desc">The bottom dock bar gives you immediate real-time feedback. Click <strong>T1–T4</strong> to solo or mute tones, adjust level meters, edit patch names, and manage clipboard items. Press <strong>Shift+Tab</strong> to collapse or expand.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">🔬</div>
+              <div class="tut-card-title">Deep Control Surface</div>
+              <div class="tut-card-desc">Press <strong>Space</strong>, <strong>Enter</strong>, or <strong>Double-Click</strong> any slot to open the Deep Inspector: full visual faders for Cutoff, Resonance, Envelopes, EQ, Chorus, Delay, and Reverb.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 3: USB MIDI Integration -->
+        <div class="tut-slide" id="tutSlide3" style="display:none">
+          <div class="tut-slide-title">🔌 USB Hardware Integration &amp; Sound Preview (Beta)</div>
+          <div class="tut-slide-subtitle">Audition patches, stream digital audio to PC speakers, and play notes live over USB.</div>
+          
+          <div class="tut-grid">
+            <div class="tut-card">
+              <div class="tut-card-icon">⚡</div>
+              <div class="tut-card-title">One-Click USB Connect</div>
+              <div class="tut-card-desc">Connect your Roland Boutique JD-08 with a standard USB cable and click <strong>Connect</strong> in the dock bar. Safe Web MIDI strictly connects to the JD-08 Sound Port.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">🎵</div>
+              <div class="tut-card-title">Real-Time Preset Audition</div>
+              <div class="tut-card-desc">When connected, clicking any patch slot in Left or Right pool immediately transmits Bank Select and Program Change to the physical JD-08, allowing instant listening.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">🔈</div>
+              <div class="tut-card-title">PC Speaker Audio Monitor</div>
+              <div class="tut-card-desc">Click <strong>🔈 PC SPK</strong> in the dock bar to route the JD-08's USB digital audio directly to your computer speakers or headphones using Web Audio API!</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">🎹</div>
+              <div class="tut-card-title">Live QWERTY Keyboard</div>
+              <div class="tut-card-desc">Play notes live using your computer's keyboard (keys <strong>A, W, S, E, D, F, G, Y, H, U, J, K</strong>) to test and audition presets anytime with dynamic velocity.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 4: Shortcuts & Pro Tips -->
+        <div class="tut-slide" id="tutSlide4" style="display:none">
+          <div class="tut-slide-title">⌨️ Essential Keyboard Shortcuts &amp; Pro Tips</div>
+          <div class="tut-slide-subtitle">Master these keyboard shortcuts to navigate and design sounds at lightning speed.</div>
+          
+          <div class="tut-keys-grid">
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Open Deep Inspector</span>
+              <span class="tut-kbd">Space / Enter</span>
+            </div>
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Direct Sound Editing</span>
+              <span class="tut-kbd">Double Click</span>
+            </div>
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Quick Rename Slot</span>
+              <span class="tut-kbd">F2</span>
+            </div>
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Copy Left ➔ Right</span>
+              <span class="tut-kbd">F5</span>
+            </div>
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Swap Left ⇄ Right</span>
+              <span class="tut-kbd">F6</span>
+            </div>
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Undo / Redo History</span>
+              <span class="tut-kbd">Ctrl+Z / Ctrl+Y</span>
+            </div>
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Copy / Cut / Paste</span>
+              <span class="tut-kbd">Ctrl+C / X / V</span>
+            </div>
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Collapse / Expand Dock</span>
+              <span class="tut-kbd">Shift + Tab</span>
+            </div>
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Initialize Selected</span>
+              <span class="tut-kbd">Delete / F8</span>
+            </div>
+            <div class="tut-key-row">
+              <span class="tut-key-desc">Play Synth Notes</span>
+              <span class="tut-kbd">QWERTY (A-K)</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tutorial Footer Controls -->
+      <div class="tutorial-footer">
+        <label class="tutorial-chk-label">
+          <input type="checkbox" id="tutorialDontShowAgain" checked>
+          <span>Don't show this guide on startup</span>
+        </label>
+        <div class="tutorial-nav-btns">
+          <button class="fbtn" id="tutSkipBtn" onclick="skipTutorial()">Skip Tour</button>
+          <button class="fbtn" id="tutPrevBtn" onclick="prevTutorialStep()" style="display:none">◀ Back</button>
+          <button class="fbtn pri" id="tutNextBtn" onclick="nextTutorialStep()">Next ▶</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="jd08-midi.js?v=20261021_RELEASE"></script>
+  <script src="app.js?v=20261021_RELEASE"></script>
 </body>
 </html>
