@@ -1432,10 +1432,20 @@ function renderTutorialStep() {
   }
   const prevBtn = $('tutPrevBtn');
   const nextBtn = $('tutNextBtn');
-  if (prevBtn) prevBtn.style.display = currentTutorialStep === 0 ? 'none' : 'inline-block';
+  if (prevBtn) {
+    if (currentTutorialStep === 0) {
+      prevBtn.style.visibility = 'hidden';
+      prevBtn.style.pointerEvents = 'none';
+    } else {
+      prevBtn.style.visibility = 'visible';
+      prevBtn.style.pointerEvents = 'auto';
+    }
+  }
   if (nextBtn) {
     nextBtn.textContent = currentTutorialStep === TOTAL_TUTORIAL_STEPS - 1 ? 'Get Started 🚀' : 'Next ▶';
   }
+  const tutBody = document.querySelector('.tutorial-body');
+  if (tutBody) tutBody.scrollTop = 0;
 }
 
 function openSettingsModalTab(tabId) {

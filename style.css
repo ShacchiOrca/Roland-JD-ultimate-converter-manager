@@ -2243,7 +2243,18 @@ body.density-compact .p-hdr {
 /* ============================================================================
    10. INTERACTIVE ONBOARDING TUTORIAL & ARCHITECTURE GUIDE
    ============================================================================ */
+.tutorial-box {
+  width: 860px !important;
+  max-width: 94vw !important;
+  height: 580px !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
 .tutorial-steps-bar {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2300,9 +2311,10 @@ body.density-compact .p-hdr {
 }
 
 .tutorial-body {
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 22px 26px;
   overflow-y: auto;
-  max-height: calc(90vh - 170px);
   color: var(--el-text-white);
   line-height: 1.5;
 }
@@ -2403,6 +2415,7 @@ body.density-compact .p-hdr {
 }
 
 .tutorial-footer {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2410,7 +2423,7 @@ body.density-compact .p-hdr {
   background: #0e1017;
   border-top: 1px solid var(--el-border-mid);
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .tutorial-chk-label {
@@ -2432,6 +2445,21 @@ body.density-compact .p-hdr {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+#tutSkipBtn {
+  min-width: 82px;
+}
+
+#tutPrevBtn {
+  min-width: 85px;
+}
+
+#tutNextBtn {
+  min-width: 125px;
+  justify-content: center;
+  text-align: center;
 }
 
 .ch-sel-btn,
