@@ -2,7 +2,6 @@
 
 > A high-performance, browser-based patch librarian, binary `.SVD` editor, and deep sound design workspace engineered for the **Roland Boutique JD-08** and classic **Roland JD-800** synthesizer architecture.
 
-![UI Theme](https://img.shields.io/badge/Interface-Elektron%20Overbridge%20Dark-orange)
 ![Web MIDI](https://img.shields.io/badge/Hardware-Web%20MIDI%20API-00e5c8)
 ![Compatibility](https://img.shields.io/badge/Format-Roland%20SVD5%20Binary-blue)
 ![Zero Install](https://img.shields.io/badge/Setup-Zero%20Install%20(Browser)-brightgreen)
